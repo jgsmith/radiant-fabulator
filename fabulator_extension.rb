@@ -9,7 +9,7 @@ require_dependency "#{File.expand_path(File.dirname(__FILE__))}/lib/fabulator_pa
 class FabulatorExtension < Radiant::Extension
   version "1.0"
   description "Applications as documents"
-  url "http://github.com/jgsmith/fabulator"
+  url "http://github.com/jgsmith/radiant-fabulator"
 
  define_routes do |map|
     map.namespace 'admin' do |admin|
