@@ -1,0 +1,33 @@
+- @page_title = 'Snippets - ' + default_page_title
+
+.outset
+  - render_region :top
+  %table#snippets.index
+    %thead
+      %tr
+        - render_region :thead do |thead|
+          - thead.title_header do
+            %th.snippet Snippet
+          - thead.modify_header do
+            %th.modify Modify
+    %tbody
+      - if @snippets.any?
+        - @snippets.each do |snippet|
+          %tr.node.level_1
+            - render_region :tbody do |tbody|
+              - tbody.title_cell do
+                %td.snippet
+                  = image('snippet', :alt => '')
+                  %span= link_to snippet.name, edit_admin_snippet_url(snippet)
+              - tbody.modify_cell do
+                %td.remove
+                  = link_to image('remove', :alt => 'Remove Snippet'), remove_admin_snippet_url(snippet)
+      - else
+        %tr
+          %td.note{:colspan => admin.snippet.index.tbody.length} No Snippets
+
+- render_region :bottom do |bottom|
+  - bottom.new_button do
+    #actions
+      %ul
+        %li= link_to "New Snippet", new_admin_snippet_url
