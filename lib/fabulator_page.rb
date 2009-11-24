@@ -15,7 +15,8 @@ class FabulatorPage < Page
       sm = YAML::load(self.compiled_xml)
 
       # run state machine if POST
-      if request.method == 'POST'
+      Rails.logger.info("Fabulator page request method: #{request.method}")
+      if request.method.to_s.downcase == 'post'
         sm.run(params)
         # save context
       end
