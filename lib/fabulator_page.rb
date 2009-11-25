@@ -8,6 +8,24 @@ class FabulatorPage < Page
   # might also create tags for form fields, etc., so it's easy to
   # create a form and fill in data
 
+  def cache?
+    false
+  end
+
+  def headers
+    if @resetting_context
+      {
+        :location => self.url,
+      }
+    else
+      { }
+    end
+  end
+
+  def response_code
+    @resetting_context ? 302 : 200
+  end
+
   def render_snippet(p)
     if p.name != XML_PART_NAME
       super
@@ -16,8 +34,26 @@ class FabulatorPage < Page
 
       # run state machine if POST
       Rails.logger.info("Fabulator page request method: #{request.method}")
-      if request.method.to_s.downcase == 'post'
+      context = FabulatorContext.find_by_page(self)
+      @resetting_context = false
+
+      if request.method == :get && 
+         params[:reset_context]
+        if !context.new_record?
+          context.destroy
+        end
+        # redirect without the reset_context param?
+        @response.redirect(url,302)
+        @resetting_context = true
+        return
+        #context = FabulatorContext.find_by_page(self)
+      end
+
+      sm.context = context.context
+      Rails.logger.info("Context: #{YAML::dump(context)}")
+      if request.method == :post
         sm.run(params)
+        context.update_attribute(:context, sm.context)
         # save context
       end
       # save statemachine state

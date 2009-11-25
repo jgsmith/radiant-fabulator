@@ -26,7 +26,7 @@ module Fabulator
     end
 
     def context
-      if @context.nil?
+      if @context.nil? || @context.empty?
         # we need to initialize ourselves
         @context = { :state => 'start', :data => { } }
         @queries.each do |q|
