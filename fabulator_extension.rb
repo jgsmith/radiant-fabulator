@@ -4,7 +4,7 @@ require 'rdf/redland/parser'
 require 'xml/libxml'
 
 require_dependency "#{File.expand_path(File.dirname(__FILE__))}/lib/fabulator" #/state_machine"
-require_dependency "#{File.expand_path(File.dirname(__FILE__))}/lib/fabulator_page"
+require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"
 
 class FabulatorExtension < Radiant::Extension
   version "1.0"
@@ -25,9 +25,9 @@ class FabulatorExtension < Radiant::Extension
     FabulatorPage
 
     fab_tab = admin.nav_tab( :fabulator, "Fabulator" )
+    fab_tab << admin.nav_item( :rdf_models, "RDF Models", "/admin/fabulator/rdf_models" )
     fab_tab << admin.nav_item( :filters, "Filters", "/admin/fabulator/filters" )
     fab_tab << admin.nav_item( :constraints, "Constraints", "/admin/fabulator/constraints" )
-    fab_tab << admin.nav_item( :rdf_models, "RDF Models", "/admin/fabulator/rdf_models" )
     admin.nav << fab_tab
 
    Radiant::AdminUI.class_eval do

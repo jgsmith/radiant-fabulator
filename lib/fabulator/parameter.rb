@@ -32,6 +32,8 @@ module Fabulator
             @constraints << Constraint.new(e)
           when 'filter':
             @filters << Filter.new(e)
+          when 'value':
+            @constraints << Constraint.new(e)
         end
       end
     end

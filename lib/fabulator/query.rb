@@ -5,17 +5,18 @@ module Fabulator
 
     def initialize(xml, def_model = nil)
       @model = xml.attributes.get_attribute_ns(FAB_NS, 'rdf-model').value rescue def_model
-      @as    = xml.attributes.get_attribute_ns(FAB_NS, 'as').value rescue ''
+      @as    = xml.attributes.get_attribute_ns(FAB_NS, 'as').value.split(/\//) rescue []
       @sql = [ ]
       xml.each_element do |e|
         @sql << RdfModel.build_query(e)
       end
     end
 
-    def run
+    def run(context)
       rdf_model = RdfModel.first(:conditions => [ 'name = ?', @model ])
+      return true if rdf_model.nil?
+
       results = [ ]
-      return results if rdf_model.nil?
       @sql.each do |s|
         Rails.logger.info(YAML::dump(s))
         conditions = [ s[:simple_where] ]
@@ -40,8 +41,8 @@ module Fabulator
           WHERE #{RdfModel.sanitize_where(conditions)}
         })
       end
-      results.uniq!
-      results
+      context.merge!(results.uniq, @as)
+      return true
     end
   end
 end

@@ -1,14 +1,30 @@
+require 'rgl/adjacency'
+require 'rgl/topsort'
+
 class RdfModel < ActiveRecord::Base
   validates_presence_of :name
   validates_uniqueness_of :name
 
   belongs_to :updated_by, :class_name => 'User'
   belongs_to :created_by, :class_name => 'User'
+  belongs_to :rdf_namespace
 
   has_many :rdf_statements
 
   def size
     self.rdf_statements.size
+  end
+
+  def namespace
+    self.rdf_namespace.namespace
+  end
+
+  def namespace=(n)
+    ns = RdfNamespace.first(:conditions => [ 'namespace = ?', n ])
+    if ns.nil?
+      ns = RdfNamespace.create({ :namespace => n })
+    end
+    self.update_attribute(:rdf_namespace_id, ns.id)
   end
 
   def namespaces
@@ -26,6 +42,10 @@ class RdfModel < ActiveRecord::Base
       :conditions => [ 'rdf_statements.rdf_model_id = ?', self.id ],
       :select => 'DISTINCT rdf_namespaces.*'
     )
+  end
+
+  def create_resource
+    RdfResource.create_resource(self.rdf_namespace)
   end
 
   def find_statements(s=nil,p=nil,o=nil)
@@ -68,15 +88,26 @@ class RdfModel < ActiveRecord::Base
         else
           # all <s,p,o> with this s,p,o
           return [] if o.new_record?
-          return o.rdf_statements.find(:all, :conditions => [ 'rdf_model_id = ? AND statement_id = ? AND predicate_id = ?', self.id, s.id, p.id ])
+          return RdfStatement.find(:all,
+            :conditions => [
+              %{subject_id = ? AND predicate_id = ? AND object_id = ? AND
+                rdf_model_id = ? AND object_type = ?}, s.id, p.id, o.id,
+                self.id, o.class.to_s ]
+          )
         end
       end
     end
   end
 
   def add_statement(s,p,o)
+    Rails.logger.info("Adding <#{s.rdf_namespace.namespace + s.local_name}>" +
+      "<#{p.rdf_namespace.namespace + p.local_name}>" +
+      "#{o}")
     st = self.find_statements(s,p,o)
     if st.empty?
+      s.save! if s.new_record?
+      p.save! if p.new_record?
+      o.save! if o.new_record?
       self.rdf_statements.create({
         :subject => s,
         :predicate => p,
@@ -136,9 +167,13 @@ class RdfModel < ActiveRecord::Base
   def self.build_query(rdf)
     rdf_doc = LibXML::XML::Document.new
     rdf_doc.root = rdf_doc.import(rdf)
-    bgp = self.rdf_to_bgp(rdf_doc.to_s)
-    sql = self.bgp_to_sql(bgp)
-    return sql
+    return self.bgp_to_sql(self.rdf_to_bgp(rdf_doc.to_s))
+  end
+
+  def self.build_arcs(rdf)
+    rdf_doc = LibXML::XML::Document.new
+    rdf_doc.root = rdf_doc.import(rdf)
+    return self.bgp_to_arcs(self.rdf_to_bgp(rdf_doc.to_s))
   end
 
   def self.sanitize_where(c)
@@ -148,74 +183,6 @@ class RdfModel < ActiveRecord::Base
   end
 
 protected
-
- #   <rdf:RDF>
- #     <City about="?url">
- #       <rdfs:label>?name</rdfs:label>
- #     </City>
- #   </rdf:RDF>
-  def self.xml_to_ntriples(xml, base=nil, &blk)
-    #parser = RdfModel::Parser.new
-    #parser.parse(xml, base)
-  end
-
-    RDF_NS='http://www.w3.org/1999/02/22-rdf-syntax-ns#'
-    RDFS_NS='http://www.w3.org/2000/01/rdf-schema#'
-    XML_NS='http://www.w3.org/XML/1998/namespace'
-
-  def self.xml_to_ntriples_2(xml, base = nil, subj = nil, &blk)
-    type_resource = RdfResource.from_uri(RDFS_NS + "type")
-    b = xml.attributes.get_attribute_ns(XML_NS, 'base').value rescue nil
-    base = b unless b.nil?
-    if subj.nil?
-      subj = xml.attributes.get_attribute_ns(RDF_NS,'about').value rescue nil
-      subj = RdfResource.from_uri(subj, base)
-    end
-    parse_type = xml.attributes.get_attribute_ns(RDF_NS,'parseType').value rescue nil
-    if xml.namespaces.namespace == RDF_NS && xml.name == 'Description'
-      # type is RDFS_NS:type 
-      t = xml.attributes.get_attribute_ns(RDFS_NS,'type') rescue nil
-      if !t.nil?
-        yield [ subj, type_resource, RdfResource.from_uri(t, base) ]
-      end
-      parse_type = 'Resource' if parse_type.nil?
-    elsif xml.namespaces.namespace == RDF_NS && xml.name == 'Seq'
-      parse_type = 'Seq' if parse_type.nil?
-    else
-      yield [ subj, type_resource, RdfResource.from_uri(xml.namespaces.namespace + xml.name, base) ]
-      parse_type = 'Resource' if parse_type.nil?
-    end
-    parse_type = 'Resource' if parse_type.nil?
-    case parse_type
-      when 'Resource':
-        xml.attributes.each do |attr|
-          next if attr.namespace == RDF_NS && attr.name == 'about'
-          next if attr.namespace == RDFS_NS && attr.name == 'type'
-          next if attr.namespace == XML_NS
-          pred = RdfResource.from_uri(attr.namespace + attr.name, base)
-          obj = RdfLiteral.build(attr.value)
-          yield [ subj, pred, obj ]
-        end
-        xml.each_element do |child|
-          if child.empty?
-            if r = child.attributes.get_attribute_ns(RDF_NS, 'resource')
-              yield [ subj, RdfResource.from_uri(child.namespaces.namespace+child.name, base), RdfResource.from_uri(r, base) ]
-            else
-              yield [ subj, RdfResource.from_uri(child.namespaces.namespace+child.name, base), RdfLiteral.build('') ]
-            end
-          elsif child.children.select{|c| !c.text? && !c.cdata? && !c.comment? && !c.entity_ref?}.size == 0
-            t = child.attributes.get_attribut_ns(RDFS_NS,'type') rescue nil
-            l = child.lang rescue nil
-            c = child.content
-            yield [ subj, RdfResource.from_uri(child.namespaces.namespace+child.name, base), RdfLiteral.build(c, l, t, base) ]
-          else
-            # handle collections and bnodes
-            # rdf:Seq, 
-          end
-        end
-      when 'Collection':
-    end
-  end
 
   def self.rdf_to_bgp(rdf)
 
@@ -256,6 +223,185 @@ protected
   end
 
   #
+  # This takes the list of triples and produces a sequence of arcs that
+  # should be (or not) present in the database
+  def self.bgp_to_arcs(bgp)
+    # we need to rank terms in order of dependence
+    # subjects must be defined before predicates/objects
+    # we'll have data pulled from the context as well as variables filled
+    # in as we add triples (especially for intermittent blank nodes)
+    joins = [ ]
+    vars = self.vars_from_bgp(bgp)
+
+    constants = [ ]
+    s_arcs = { }
+    o_arcs = { }
+    p_arcs = { }
+    bnode_arcs = { }
+    arcs = { }
+    bgp[:terms].each do |t|
+      spo = 0
+      spo = spo | 1 if t[0] =~ /^\?/
+      spo = spo | 2 if t[1] =~ /^\?/
+      spo = spo | 2 if t[1] =~ %r{^http://www.w3.org/1999/02/22-rdf-syntax-ns#_(\d+)$}
+      spo = spo | 4 if t[2].is_a?(Array) && t[2][0] =~ /^\?/
+      spo = spo | 4 if !t[2].is_a?(Array) && t[2] =~ /^\?/
+      puts "#{spo}: <#{t.join("><")}>"
+      arcs[t[0]] = [] if arcs[t[0]].nil?
+      arcs[t[0]] << [spo, t[1], t[2]]
+    end
+    # we want the constant triplets first
+    vars[:graph] = arcs # .collect {|a| a.sort_by{|k| k[0]} }
+
+    # now figure out dependency graph -- doesn't change with data
+    dg = RGL::DirectedAdjacencyGraph[]
+    arcs.each_pair do |v,es|
+      next unless v =~ /\?/
+      es.each do |e|
+        if e[2].is_a?(Array)
+          dg.add_edge v, e[2][0] if e[2][0] =~ /^\?/
+        else
+          dg.add_edge v, e[2] if e[2] =~ /^\?/
+        end
+      end
+    end
+    vars[:sorted_vars] = dg.topsort_iterator.to_a
+    #varcs = [ ]
+    #vars[:sorted_vars].each do |u|
+    #  next if u =~ /^\?_/
+    #  varcs = varcs + self.build_arcs_from_graph(dg,u)
+    #end
+    #varcs2 = [ ]
+    #varcs.each do |v|
+    #  Rails.logger.info("v: #{v}")
+    #  self.varc_flattened(v) do |vv|
+    #    varcs2 << [ v[0][0] ] + vv
+    #  end
+    #end
+    #vars[:arcs] = varcs2
+
+    # now to create SELECT to test each arc for existance
+    # and return the blank node identifiers if it does
+    # will need to check for Bag/Seq predicates
+    
+    return vars
+
+    if false
+      case spo
+        when 0:
+          # make sure triple is in play
+          constants << [spo] + t
+        when 1:
+          if t[0] =~ /\?_/
+            bnode_arcs[t[0]] = [ ] if bnode_arcs[t[0]].nil?
+            bnode_arcs[t[0]] << [spo] + t
+          else
+            s_arcs[t[0]] = [ ] if s_arcs[t[0]].nil?
+            s_arcs[t[0]] << [spo] + t
+          end
+        when 2:
+          if t[1] =~ /\?_/
+            bnode_arcs[t[1]] = [ ] if bnode_arcs[t[1]].nil?
+            bnode_arcs[t[1]] << [spo] + t
+          else
+            p_arcs[t[1]] = [ ] if p_arcs[t[1]].nil?
+            p_arcs[t[1]] << [spo] + t
+          end
+        when 3:
+          if t[0] =~ /\?_/
+            bnode_arcs[t[0]] = [ ] if bnode_arcs[t[0]].nil?
+            if t[1] =~ %r{^http://www.w3.org/1999/02/22-rdf-syntax-ns#_(\d+)$}
+              bnode_arcs[t[0]] << [ spo, t[0], t[0]+'_'+$1, t[2] ]
+            else
+              bnode_arcs[t[0]] << [spo] + t
+            end
+          else
+          end
+        when 4:
+          if t[2] =~ /\?_/
+            bnode_arcs[t[2]] = [ ] if bnode_arcs[t[2]].nil?
+            bnode_arcs[t[2]] << [spo] + t
+          else
+            o_arcs[t[2]] = [ ] if o_arcs[t[2]].nil?
+            o_arcs[t[2]] << [spo] + t
+          end
+        when 5:
+          if t[2] =~ /\?_/
+            bnode_arcs[t[2]] = [ ] if bnode_arcs[t[2]].nil?
+            bnode_arcs[t[2]] << [spo] + t
+          elsif t[0] =~ /\?_/
+            bnode_arcs[t[0]] = [ ] if bnode_arcs[t[0]].nil?
+            bnode_arcs[t[0]] << [spo] + t
+          else
+            o_arcs[t[2]] = [ ] if o_arcs[t[2]].nil?
+            o_arcs[t[2]] << [spo] + t
+          end
+      end
+    end
+    return { :arcs => constants + s_arcs.values + o_arcs.values + p_arcs.values + bnode_arcs.values, :vars => vars, :froms => froms }
+  end
+
+  def self.build_arcs_from_graph(dg,u)
+    as = [ ]
+    dg.each_adjacent(u) do |v|
+      if v =~ /\?_/
+        as << [ [ u, v ] ] + self.build_arcs_from_graph(dg,v)
+      else
+        as << [ [ u, v ] ]
+      end
+    end
+    as
+  end
+
+  def self.varc_flattened(v,&block)
+    Rails.logger.info("vv: #{v}")
+    if v.is_a?(Array)
+      if v.size == 1
+        yield [ v[0][1] ]
+      else
+        v[1].each do |vp|
+          if vp.is_a?(Array) && vp[0].is_a?(Array)
+            self.varc_flattened(vp) do |vv|
+              yield [ v[0][1] ] + vv
+            end
+          else
+            yield [ v[0][1], vp[1] ]
+          end
+        end
+      end
+    else
+      yield [ v ]
+    end
+  end
+        
+
+  def self.vars_from_bgp(bgp)
+    froms = [ ]
+    vars = { }
+    bgp[:terms].size.times do |i|
+      froms << "rdf_statements rs_#{i}"
+      if bgp[:terms][i][0] =~ /^\?(.*)$/
+        vars[$1] = [ :subject, "rs_#{i}" ]
+      end
+      if bgp[:terms][i][1] =~ /^\?(.*)$/
+        vars[$1] = [ :predicate, "rs_#{i}" ]
+      elsif bgp[:terms][i][1] =~ %r{^http://www.w3.org/1999/02/22-rdf-syntax-ns#_(\d+)$}
+        vars[bgp[:terms][i][0]+'_'+$1] = [ :predicate, bgp[:terms][i][0]+'_'+$1 ]
+      end
+      if bgp[:terms][i][2].is_a?(Array)
+        if bgp[:terms][i][2][0] =~ /^\?(.*)$/
+          vars[$1] = [ :object, "rs_#{i}" ]
+        end
+      else
+        if bgp[:terms][i][2] =~ /^\?(.*)$/
+          vars[$1] = [ :object, "rs_#{i}" ]
+        end
+      end
+    end
+    return { :froms => froms, :vars => vars }
+  end
+
+  #
   # this is taken from http://www.cs.wayne.edu/~artem/main/research/TR-DB-052006-CLJF.pdf
   # the result is a hash of stuff for a RdfStatement.find(:all, ...) call
   # the :conditions array will need to be modified at query time to
@@ -271,26 +417,9 @@ protected
     # Construct the FROM clause to contain all the table aliases
     from = []
     joins = []
-    vars = { }
-    bgp[:terms].size.times do |i|
-      from << "rdf_statements rs_#{i}"
-      if bgp[:terms][i][0] =~ /^\?(.*)$/
-        vars[$1] = [ :subject, "rs_#{i}" ]
-      end
-      if bgp[:terms][i][1] =~ /^\?(.*)$/
-        vars[$1] = [ :predicate, "rs_#{i}" ]
-      end
-      if bgp[:terms][i][2].is_a?(Array)
-        if bgp[:terms][i][2][0] =~ /^\?(.*)$/
-          vars[$1] = [ :object, "rs_#{i}" ]
-        end
-      else
-        if bgp[:terms][i][2] =~ /^\?(.*)$/
-          vars[$1] = [ :object, "rs_#{i}" ]
-        end
-      end
-    end
-    sql_args[:from] = from.join(", ")
+    vars = self.vars_from_bgp(bgp)
+    sql_args[:from] = vars[:froms].join(", ")
+    vars = vars[:vars]
     # Build the select statement
     select = []
     vars.each_pair do |v,i|

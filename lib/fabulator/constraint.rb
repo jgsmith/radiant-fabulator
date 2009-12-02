@@ -4,25 +4,30 @@ module Fabulator
   # admin interface allows managing of constraints and filters
   class Constraint
     def initialize(xml)
-      @c_type = xml.attributes.get_attribute_ns(FAB_NS, 'type').value
-      @inverted = (xml.attributes.get_attribute_ns(FAB_NS, 'sense').value.downcase rescue 'false')
-      @inverted = (@inverted == 'true' || @inverted == 'yes') ? true : false
-
       @constraints = [ ]
       @values = [ ]
       @attributes = { }
-      xml.each_attr do |attr|
-        next unless attr.ns.href == FAB_NS
-        next if attr.name == 'type' || attr.name == 'sense'
-        @attributes[attr.name] = attr.value
-      end
-      xml.each_element do |e|
-        next unless e.namespaces.namespace.href == FAB_NS
-        case e.name
-          when 'constraint':
-            @constraints << Constraint.new(e)
-          when 'value':
-            @values << e.content
+      @inverted = (xml.attributes.get_attribute_ns(FAB_NS, 'sense').value.downcase rescue 'false')
+      @inverted = (@inverted == 'true' || @inverted == 'yes') ? true : false
+      if xml.name == 'value'
+        @c_type = 'any'
+        @values << xml.content
+      else
+        @c_type = xml.attributes.get_attribute_ns(FAB_NS, 'type').value
+
+        xml.each_attr do |attr|
+          next unless attr.ns.href == FAB_NS
+          next if attr.name == 'type' || attr.name == 'sense'
+          @attributes[attr.name] = attr.value
+        end
+        xml.each_element do |e|
+          next unless e.namespaces.namespace.href == FAB_NS
+          case e.name
+            when 'constraint':
+              @constraints << Constraint.new(e)
+            when 'value':
+              @values << e.content
+          end
         end
       end
     end

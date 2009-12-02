@@ -1,10 +1,8 @@
 module Fabulator
-  #FAB_NS='http://dh.tamu.edu/ns/fabulator/1.0#'
-
   class Transition
     attr_accessor :state, :validations
 
-    def initialize(xml)
+    def initialize(xml, rdf_model = nil)
       # manage validations without Lua, if we can
       # only use Lua if we have to
       # model data as RDF?
@@ -15,8 +13,8 @@ module Fabulator
       @groups = { }
       @params = { }
       @required_params = [ ]
-      @assert_deny = [ ]
-      @assertion_denial = [ ]
+      @actions = [ ]
+      @rdf_model = (xml.attributes.get_attribute_ns(FAB_NS, 'rdf-model').value rescue rdf_model)
 
       xml.each_element do |e|
         next unless e.namespaces.namespace.href == FAB_NS
@@ -36,13 +34,15 @@ module Fabulator
               end
             end
           when 'rdf-assert':
-            @assert_deny << Assert.new(e)
+            @actions << Assert.new(e, @rdf_model)
           when 'rdf-deny':
-            @assert_deny << Deny.new(e)
+            @actions << Deny.new(e, @rdf_model)
           when 'rdf-assertion':
-            @assertion_denial << Assertion.new(e)
+            @actions << Assertion.new(e, @rdf_model)
           when 'rdf-denial':
-            @assertion_denial << Denial.new(e)
+            @actions << Denial.new(e, @rdf_model)
+          when 'rdf-query':
+            @actions << Query.new(e, @rdf_model)
         end
       end
     end
@@ -51,7 +51,7 @@ module Fabulator
       (@groups.collect{|w| w.param_names}.flatten + @params.keys).uniq
     end
 
-    def validate_params(params)
+    def validate_params(context,params)
       f_p = self.apply_filters(params)
 
       res = { :missing => [ ], :valid => { }, :invalid => [ ], :unknown => [ ], :errors => [ ] }
@@ -98,7 +98,17 @@ module Fabulator
       return params
     end
 
-    def run(data)
+    def run(context)
+      # do queries, denials, assertions in the order given
+      Rails.logger.info("\n\n\nRunning transition!\n\n\n")
+      @actions.each do |action|
+        Rails.logger.info(YAML::dump(action))
+        if !action.run(context)
+          return false
+        end
+      end
+      Rails.logger.info("\n\ntransition is run!\n\n\n")
+      return true
     end
   end
 end

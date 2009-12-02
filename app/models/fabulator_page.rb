@@ -33,7 +33,6 @@ class FabulatorPage < Page
       sm = YAML::load(self.compiled_xml)
 
       # run state machine if POST
-      Rails.logger.info("Fabulator page request method: #{request.method}")
       context = FabulatorContext.find_by_page(self)
       @resetting_context = false
 
@@ -46,15 +45,13 @@ class FabulatorPage < Page
         @response.redirect(url,302)
         @resetting_context = true
         return
-        #context = FabulatorContext.find_by_page(self)
       end
 
       sm.context = context.context
-      Rails.logger.info("Context: #{YAML::dump(context)}")
       if request.method == :post
         sm.run(params)
-        context.update_attribute(:context, sm.context)
         # save context
+        context.update_attribute(:context, sm.context.context)
       end
       # save statemachine state
       # display resulting view

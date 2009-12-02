@@ -1,6 +1,4 @@
 module Fabulator
-  #FAB_NS='http://dh.tamu.edu/ns/fabulator/1.0#'
-
   class AssertDeny
     attr_accessor :state
 
@@ -22,6 +20,8 @@ module Fabulator
 
     def count(s)
       rdf_model = RdfModel.first(:conditions => [ 'name = ?', @model ])
+      return 0 if rdf_model.nil?
+
       conditions = [ s[:simple_where] ]
       s[:where_params].each do |p|
         if p == :model
@@ -29,11 +29,11 @@ module Fabulator
         elsif p.is_a?(Array)
           case p[0]
             when :literal:
-              conditions << (RdfLiteral.first(:conditions => [ 'obj_lit = ?', p[1] ]).id rescue 0)
+              conditions << ((RdfLiteral.first(:conditions => [ 'obj_lit = ?', p[1] ]).id rescue 0) || 0)
             when :resource:
-              conditions << (RdfResource.from_uri(p[1]) rescue 0)
+              conditions << ((RdfResource.from_uri(p[1]).id rescue 0) || 0)
             when :namespace:
-              conditions << (RdfNamespace.first(:conditions => [ 'namespace = ?', p[1] ]).id rescue 0)
+              conditions << ((RdfNamespace.first(:conditions => [ 'namespace = ?', p[1] ]).id rescue 0) || 0)
           end
         end
       end
@@ -48,19 +48,21 @@ module Fabulator
   end
 
   class Assert < AssertDeny
-    def run
+    def run(context)
       @sql.each do |s|
         return true if self.count(s) > 0
       end
+      context.state = self.state
       return false
     end
   end
 
   class Deny < AssertDeny
-    def run
+    def run(context)
       @sql.each do |s|
         return true if self.count(s) == 0
       end
+      context.state = self.state
       return false
     end
   end

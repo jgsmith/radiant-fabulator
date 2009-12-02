@@ -19,7 +19,8 @@ class CreateRdfTables < ActiveRecord::Migration
       t.string :name, :null => false
       t.text   :description
       t.integer :lock_version, :default => 0
-      t.integer :rdf_resources_count, :default => 0
+      t.integer :rdf_statements_count, :default => 0
+      t.references :rdf_namespace, :null => false
       t.references :updated_by
       t.references :created_by
       t.timestamps

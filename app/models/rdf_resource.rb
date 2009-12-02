@@ -9,6 +9,17 @@ class RdfResource < ActiveRecord::Base
   has_many :as_predicate, :class_name => 'RdfStatement', :foreign_key => 'predicate_id'
   has_many :as_object, :as => :object, :class_name => 'RdfStatement'
 
+  def rdf_statements
+    RdfStatement.find(:all, 
+      :conditions => [ %{
+        subject_id = ? 
+        OR predicate_id = ? 
+        OR (object_id = ? AND object_type = 'RdfStatement')
+      }, self.id, self.id, self.id ],
+      :select => 'DISTINCT *'
+    )
+  end
+
   def self.find_or_create(ns,ln)
     ns_obj = RdfNamespace.first(:conditions => [ 'namespace = ?', ns ])
     if ns_obj.nil?
@@ -50,10 +61,19 @@ class RdfResource < ActiveRecord::Base
     end
   end
 
+  def uri
+    self.rdf_namespace.namespace + self.local_name
+  end
+
+  def self.create_resource(ns)
+    @@uuid ||= UUID.new
+    ns[@@uuid.generate(:compact)]
+  end
+
   def self.create_bnode
     # use own NS and uuid for identifier
     @@uuid ||= UUID.new
-    RdfResource.from_uri('_:' + @@uuid.generate(:compact))
+    self.from_uri('_:' + @@uuid.generate(:compact))
   end
 
   def bnode?
