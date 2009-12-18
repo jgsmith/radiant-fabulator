@@ -67,13 +67,13 @@ class FabulatorExtension < Radiant::Extension
     returning OpenStruct.new do |filter|
       filter.edit = Radiant::AdminUI::RegionSet.new do |edit|
         edit.main.concat %w{edit_header edit_form}
-        edit.form.concat %w{edit_title edit_description}
+        edit.form.concat %w{edit_title edit_namespace edit_description}
         edit.form_bottom.concat %w{edit_buttons edit_timestamp}
       end
       filter.index = Radiant::AdminUI::RegionSet.new do |index|
         index.top.concat %w{help_text}   
-        index.thead.concat %w{title_header size_header modify_header}
-        index.tbody.concat %w{title_cell size_cell modify_cell}
+        index.thead.concat %w{title_header namespace_header size_header modify_header}
+        index.tbody.concat %w{title_cell namespace_cell size_cell modify_cell}
         index.bottom.concat %w{new_button}
       end
       filter.new = filter.edit

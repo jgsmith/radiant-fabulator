@@ -54,17 +54,27 @@ class CreateRdfTables < ActiveRecord::Migration
     end
 
     add_index :rdf_statements, :rdf_model_id
-    add_index :rdf_statements, [ :rdf_model_id, :subject_id ]
-    add_index :rdf_statements, [ :rdf_model_id, :predicate_id ]
-    add_index :rdf_statements, [ :rdf_model_id, :object_id ]
-    add_index :rdf_statements, [ :rdf_model_id, :object_type, :object_id ]
-    add_index :rdf_statements, [ :rdf_model_id, :subject_id, :predicate_id ]
-    #add_index :rdf_statements, [ :rdf_model_id, :subject_id, :object_id ]
-    add_index :rdf_statements, [ :rdf_model_id, :subject_id, :object_type, :object_id ]
-    add_index :rdf_statements, [ :rdf_model_id, :predicate_id, :object_type, :object_id ]
-    #add_index :rdf_statements, [ :rdf_model_id, :predicate_id, :object_lit ]
-    add_index :rdf_statements, [ :rdf_model_id, :subject_id, :predicate_id, :object_type, :object_id ]
-    #add_index :rdf_statements, [ :rdf_model_id, :subject_id, :predicate_id, :object_lit ]
+    add_index :rdf_statements, 
+        [ :rdf_model_id, :subject_id ], 
+        { :name => 'rdf_statements_m_s' }
+    add_index :rdf_statements, 
+        [ :rdf_model_id, :predicate_id ], 
+        { :name => 'rdf_statements_m_p' }
+    add_index :rdf_statements, 
+        [ :rdf_model_id, :object_type, :object_id ], 
+        { :name => 'rdf_statements_m_o' }
+    add_index :rdf_statements, 
+        [ :rdf_model_id, :subject_id, :predicate_id ], 
+        { :name => 'rdf_statements_m_s_p' }
+    add_index :rdf_statements, 
+        [ :rdf_model_id, :subject_id, :object_type, :object_id ], 
+        { :name => 'rdf_statements_m_s_o' }
+    add_index :rdf_statements, 
+        [ :rdf_model_id, :predicate_id, :object_type, :object_id ], 
+        { :name => 'rdf_statements_m_p_o' }
+    add_index :rdf_statements, 
+        [ :rdf_model_id, :subject_id, :predicate_id, :object_type, :object_id ],
+        { :name => 'rdf_statements_m_s_p_o' }
   end
 
   def self.down

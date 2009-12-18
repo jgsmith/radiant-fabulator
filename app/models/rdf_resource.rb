@@ -28,6 +28,10 @@ class RdfResource < ActiveRecord::Base
     return ns_obj[ln]
   end
 
+  def to_s
+    self.uri
+  end
+
   def self.from_uri(uri, base = nil)
     bits = uri.split('#',2)
     if bits.size == 2

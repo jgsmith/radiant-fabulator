@@ -7,6 +7,10 @@
         %p.title
           = f.label :name
           = f.text_field :name, :class => 'textbox activate', :maxlength => 100
+      - form.edit_namespace do
+        %p.description
+          = f.label :namespace, "Namespace"
+          = f.text_field :namespace, :class => 'textbox', :maxlength => 100
       - form.edit_description do
         %p.description
           = f.label :description, "Description"

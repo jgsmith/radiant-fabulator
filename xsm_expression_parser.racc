@@ -1,0 +1,223 @@
+class Fabulator::XSM::ExpressionParser
+  # based on XSM expression grammer from 
+  #    http://cpansearch.perl.org/src/JSMITH/Gestinanna-0.02/parser.PL
+
+  # instead of compiling ruby code, we'll instantiate objects to handle the
+  # run-time performance
+
+  start expr
+
+rule
+  expr: or_expr
+    | range_expr
+
+  or_expr: and_expr
+    | or_expr OR and_expr { result = Fabulator::XSM::OrExpr.new(val[0], val[2]) }
+
+  and_expr: equality_expr
+    | and_expr AND equality_expr { result = Fabulator::XSM::AndExpr.new(val[0], val[2]) }
+
+  equality_expr: relational_expr
+    | equality_expr '=' relational_expr { result = Fabulator::XSM::EqExpr.new(val[0], val[2]) }
+    | equality_expr '!=' relational_expr { result = Fabulator::XSM::NeqExpr.new(val[0], val[2]) }
+
+  relational_expr: additive_expr
+    | relational_expr '<' additive_expr { result = Fabulator::XSM::LtExpr.new(val[0], val[2]) }
+    | relational_expr '>' additive_expr { result = Fabulator::XSM::LtExpr.new(val[2], val[0]) }
+    | relational_expr '<=' additive_expr { result = Fabulator::XSM::LteExpr.new(val[0], val[2]) }
+    | relational_expr '>=' additive_expr { result = Fabulator::XSM::LteExpr.new(val[2], val[0]) }
+
+  range_expr: additive_expr '..' additive_expr { result = Fabulator::XSM::RangeExpr.new(val[0], val[2]) }
+
+  additive_expr: multiplicative_expr
+    | additive_expr '+' multiplicative_expr { result = Fabulator::XSM::AddExpr.new(val[0], val[2]) }
+    | additive_expr '-' multiplicative_expr { result = Fabulator::XSM::SubExpr.new(val[0], val[2]) }
+
+  multiplicative_expr: unary_expr
+    | multiplicative_expr '*' unary_expr { result = Fabulator::XSM::MpyExpr.new(val[0], val[2]) }
+    | multiplicative_expr DIV unary_expr { result = Fabulator::XSM::DivExpr.new(val[0], val[2]) }
+    | multiplicative_expr MOD unary_expr { result = Fabulator::XSM::ModExpr.new(val[0], val[2]) }
+
+  unary_expr: union_expr
+    | '-' unary_expr { result = Fabulator::XSM::NegExpr.new(val[1]) }
+
+  union_expr: path_expr
+    | union_expr_x { result = Fabulator::XSM::UnionExpr.new(val[0]) }
+
+  union_expr_x: path_expr '|' path_expr { result = [ val[0], val[2] ] }
+    | union_expr_x '|' path_expr { result = val[0] + [ val[2] ] }
+
+  path_expr: location_path { result = Fabulator::XSM::PathExpr.new(nil, [], val[0]) }
+    | primary_expr predicates segment { result = Fabulator::XSM::PathExpr.new(val[0], val[1], val[2]) }
+
+  segment:
+    | '/' relative_location_path { result = val[1] }
+    | '//' relative_location_path { result = [ Fabulator::XSM::AxisDescendentOrSelf.new ] + val[1] }
+
+  location_path: relative_location_path 
+    | absolute_location_path
+
+  # / => local data root
+  # // => local data descendent or self
+
+  absolute_location_path: '/' { result = [ Fabulator::XSM::RootContext.new ] }
+    | '/' relative_location_path { result = [ Fabulator::XSM::RootContext.new ] + val[1] }
+    | '//' relative_location_path { result = [ Fabulator::XSM::RootContext.new, Fabulator::XSM::AxisDescendentOrSelf.new(val[1][0]) ] + val[1][1..val[1].size-1] }
+    | AXIS_NAME '::' '/' relative_location_path { result = [ Fabulator::XSM::RootContext.new(val[0]) ] + val[3] }
+    | AXIS_NAME '::' '//' relative_location_path { result = [ Fabulator::XSM::RootContext.new(val[0]), Fabulator::XSM::AxisDescendentOrSelf.new(val[3][0]) ] + val[3][1..val[3].size-1] }
+
+  relative_location_path: step { result = [ val[0] ] }
+    | relative_location_path '/' step { result = val[0] + [ val[2] ] }
+    | relative_location_path '//' step { result = val[0] + [ Fabulator::XSM::AxisDescendentOrSelf.new(val[2]) ] }
+
+  step: axis node_test predicates { result = Fabulator::XSM::Step.new(val[0], val[1], val[2]) }
+    | axis '{' DOLLAR_QNAME '}' predicates { result = Fabulator::XSM::Step.new(val[0], val[2], val[4]) }
+    | AXIS_METHOD '::' node_test predicates { result = Fabulator::XSM::FunctionStep.new(val[2], nil, val[3]) }
+    | AXIS_METHOD '::' FUNCTION_NAME '(' opt_args ')' predicates { result = Fabulator::XSM::FunctionStep.new(val[2], val[4], val[6]) }
+    | '.' { result = Fabulator::XSM::CurrentContext.new }
+    | '..' { result = Fabulator::XSM::AncestorContext.new }
+
+  axis:
+    | AXIS_NAME '::' { result = Fabulator::XSM::Axis.new(val[0]) }
+    | '@' { result = Fabulator::XSM::AxisAttribute.new  }
+
+  predicates: { result = [ ] }
+    | predicates '[' expr ']' { result = val[0] + [ val[2] ] }
+
+  primary_expr:
+    DOLLAR_QNAME
+    | '<' expr '>'
+    | '(' expr ')'
+    | LITERAL
+    | NUMBER
+    | FUNCTION_NAME '(' opt_args ')'
+
+  opt_args:
+    | args
+
+  args: expr
+    | args ',' expr
+
+  node_test: QNAME
+    | NUMBER
+    | '*'
+
+end
+
+---- inner 
+  require 'fabulator/xsm'
+
+  def parse(t)
+    @source = t
+    @curpos = 0
+      
+    @yydebug = true
+
+    @last_token = nil
+      
+    do_parse
+  end
+
+  @@regex = {
+    :simple_tokens => %r{\.\.|::|!=|>=|<=|==|\|\||&&|\/\/|\.|@|\*|\(|\)|\[|\]|\{|\}|\/|\||\+|-|=|>|<|&|,},
+    :ncname => %r{(?:[a-zA-Z_][a-zA-Z0-9_.-]*)},
+    :event_type => %r{(?:processing-instruction|comment|text|node)},
+    :axis_name => %r{(?:attribute|child|child-or-self|descendant|descendant-or-self|method|self)},
+    :namespace_name => %r{(?:context|global|local|session|universal)},
+  }
+
+  @@preceding_tokens = { }
+  [%{
+    @ :: ( 
+    and or mod div 
+    * 
+    / // | + - = != < <= > >=
+    == & && ||
+  }.split(/\s*/), '[', ',', '$' ].each { |t| @@preceding_tokens[t] = true }
+
+  @@regex[:general] = Regexp.compile(%{
+    (?:
+      ((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]})\\s*(?=\\()
+      |(#{@@regex[:ncname]})\\s*(?=::)
+      |(#{@@regex[:ncname]}:\\*)                       
+      |((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]}) 
+      |('[^']*'|"[^"]*")                             
+      |(-?\\d+(?:\\.\\d+)?|\\.\\d+)                 
+      |\\$((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]})
+      |(#{@@regex[:simple_tokens]})
+    )},'x')
+  @@regex[:general] = Regexp.compile(%{(?:((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]})\\s*(?=\\()|(#{@@regex[:ncname]})\\s*(?=::)|(#{@@regex[:ncname]}:\\*)|((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]})|('[^']*'|"[^"]*")|(-?\\d+(?:\\.\\d+)?|\\.\\d+)|\\$((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]})|(#{@@regex[:simple_tokens]}))})
+  def next_token  
+    @last_token = @token
+    @token = nil
+    while @curpos < @source.length && @source[@curpos..@curpos] =~ /\s/ do
+      @curpos = @curpos + 1
+    end
+    if @curpos >= @source.length
+      @last_token = nil
+      return [ false, false ]
+    end
+
+    if @last_token && ! @@preceding_tokens[@last_token[1]]
+      if @source[@curpos..@curpos] == '*'
+        @token = [ '*', '*' ]
+      else
+        res = @@regex[:ncname].match(@source[@curpos..@source.length-1])
+        if !res.nil? && res[1] != ''
+          ncname = (res[1] rescue '*doh*')
+          case ncname
+            when 'and':
+              @token = [ :AND, 'and' ]
+            when 'or':
+              @token = [ :OR, 'or' ]
+            when 'mod':
+              @token = [ :MOD, 'mod' ]
+            when 'div':
+              @token = [ :DIV, 'div' ]
+            else
+              if !ncname.nil? && ncname.length > 0
+                raise "Expected and, or, mod, or div, but got '#{ncname}'"
+              end
+          end
+        end
+      end
+    end
+ 
+    if @token.nil? && @source[@curpos..@curpos+1] == '..'
+      @token = [ :RANGE, '..' ]
+    end
+
+    if @token.nil?
+      puts "source: [#{@source[@curpos..@source.length-1]}]"
+     #puts "regex: #{@@regex[:general]}"
+      res = @@regex[:general].match(@source[@curpos..@source.length-1])
+      #@source[@curpos..@source.length-1] =~ @@regex[:general]
+      if !res[1].nil?
+        @token = [ :FUNCTION_NAME, res[1] ]
+      elsif !res[2].nil?
+        @token = [ res[2] == 'method' ? :AXIS_METHOD : :AXIS_NAME, res[2] ]
+      elsif !res[3].nil?
+        @token = [ :NAME_COLON_STAR, res[3] ]
+      elsif !res[4].nil?
+        @token = [ :QNAME, res[4] ]
+      elsif !res[5].nil?
+        s = res[5]
+        s = s[1..s.length-2]
+        @token = [ :LITERAL, s ]
+      elsif !res[6].nil?
+        @token = [ :NUMBER, res[6] ]
+      elsif !res[7].nil?
+        @token = [ :DOLLAR_QNAME, res[7] ]
+      elsif !res[8].nil?
+        @token = [ res[8], res[8] ]
+      else
+        raise "Failed to parse '#{@source}' at #{@curpos}"
+      end
+    end
+
+    if !@token[1].nil?
+      @curpos = @curpos + @token[1].length
+    end
+    puts "Token: [ #{@token[0]}, #{@token[1]} ]"
+    return @token
+  end

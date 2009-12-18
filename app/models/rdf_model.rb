@@ -16,7 +16,7 @@ class RdfModel < ActiveRecord::Base
   end
 
   def namespace
-    self.rdf_namespace.namespace
+    self.rdf_namespace.namespace rescue ''
   end
 
   def namespace=(n)
@@ -100,9 +100,7 @@ class RdfModel < ActiveRecord::Base
   end
 
   def add_statement(s,p,o)
-    Rails.logger.info("Adding <#{s.rdf_namespace.namespace + s.local_name}>" +
-      "<#{p.rdf_namespace.namespace + p.local_name}>" +
-      "#{o}")
+    return if s.nil? || p.nil? || o.nil?
     st = self.find_statements(s,p,o)
     if st.empty?
       s.save! if s.new_record?
@@ -177,16 +175,12 @@ class RdfModel < ActiveRecord::Base
   end
 
   def self.sanitize_where(c)
-    Rails.logger.info(YAML::dump(c))
-    Rails.logger.info(YAML::dump(c))
     self.sanitize_sql_for_conditions(c)
   end
 
 protected
 
   def self.rdf_to_bgp(rdf)
-
-    Rails.logger.info("RDF: [#{rdf}]")
 
     #wheres = [ ]
     
@@ -246,6 +240,10 @@ protected
       spo = spo | 2 if t[1] =~ %r{^http://www.w3.org/1999/02/22-rdf-syntax-ns#_(\d+)$}
       spo = spo | 4 if t[2].is_a?(Array) && t[2][0] =~ /^\?/
       spo = spo | 4 if !t[2].is_a?(Array) && t[2] =~ /^\?/
+      spo = spo | 16 if t[0] =~ /^\{/
+      spo = spo | 32 if t[1] =~ /^\{/
+      spo = spo | 64 if t[2].is_a?(Array) && t[2][0] =~ /^\{/
+      spo = spo | 64 if !t[2].is_a?(Array) && t[2] =~ /^\{/
       puts "#{spo}: <#{t.join("><")}>"
       arcs[t[0]] = [] if arcs[t[0]].nil?
       arcs[t[0]] << [spo, t[1], t[2]]
@@ -354,7 +352,6 @@ protected
   end
 
   def self.varc_flattened(v,&block)
-    Rails.logger.info("vv: #{v}")
     if v.is_a?(Array)
       if v.size == 1
         yield [ v[0][1] ]
@@ -382,8 +379,12 @@ protected
       froms << "rdf_statements rs_#{i}"
       if bgp[:terms][i][0] =~ /^\?(.*)$/
         vars[$1] = [ :subject, "rs_#{i}" ]
+      elsif bgp[:terms][i][0] =~ /^(\{.*\})$/
+        vars[$1] = [ :subject, "rs_#{i}" ]
       end
       if bgp[:terms][i][1] =~ /^\?(.*)$/
+        vars[$1] = [ :predicate, "rs_#{i}" ]
+      elsif bgp[:terms][i][1] =~ /^(\{.*\})$/
         vars[$1] = [ :predicate, "rs_#{i}" ]
       elsif bgp[:terms][i][1] =~ %r{^http://www.w3.org/1999/02/22-rdf-syntax-ns#_(\d+)$}
         vars[bgp[:terms][i][0]+'_'+$1] = [ :predicate, bgp[:terms][i][0]+'_'+$1 ]
@@ -391,9 +392,13 @@ protected
       if bgp[:terms][i][2].is_a?(Array)
         if bgp[:terms][i][2][0] =~ /^\?(.*)$/
           vars[$1] = [ :object, "rs_#{i}" ]
+        elsif bgp[:terms][i][2][0] =~ /^(\{.*\})$/
+          vars[$1] = [ :object, "rs_#{i}" ]
         end
       else
         if bgp[:terms][i][2] =~ /^\?(.*)$/
+          vars[$1] = [ :object, "rs_#{i}" ]
+        elsif bgp[:terms][i][2] =~ /^(\{.*\})$/
           vars[$1] = [ :object, "rs_#{i}" ]
         end
       end
@@ -415,6 +420,7 @@ protected
     # Substitute each distinct blank node label in BGP with a unique variable
     # Assign each edge e in E a unique table alias t_e
     # Construct the FROM clause to contain all the table aliases
+    expr_parser = Fabulator::XSM::ExpressionParser.new
     from = []
     joins = []
     vars = self.vars_from_bgp(bgp)
@@ -423,7 +429,7 @@ protected
     # Build the select statement
     select = []
     vars.each_pair do |v,i|
-      next if v =~ /^_/
+      next if v =~ /^[{_]/
       if i[0] == :predicate
         select << "#{i[1]}.predicate_id AS #{v}_id"
       elsif i[0] == :object
@@ -442,6 +448,14 @@ protected
         s_var = $1
         if this_table != vars[s_var][1] && vars[s_var][0] == :subject
           where << %{#{this_table}.subject_id = #{vars[s_var][1]}.subject_id}
+        end
+      elsif bgp[:terms][i][0] =~ /^\{(.*)\}$/
+        expr = $1
+        if this_table != vars["{#{expr}}"][1] && vars["{#{expr}}"][0] == :subject
+          where << %{#{this_table}.subject_id = #{vars["{#{expr}}"][1]}.subject_id}
+        else
+          where << %{#{this_table}.subject_id in (%s)}
+          where_params << [ :resource, expr_parser.parse(expr) ]
         end
       else
         where << %{#{this_table}.subject_id = %s}
@@ -474,6 +488,19 @@ protected
               #{this_table}.object_type = 'RdfResource' AND
               #{this_table}.object_id = #{vars[o_var][1]}.subject_id
             }
+          end
+        elsif bgp[:terms][i][2][0] =~ /^\{(.*)\}$/
+          expr = $1
+          if this_table != vars["{#{expr}}"][1] && vars["{#{expr}}"][0] == :object
+            where << %{#{this_table}.object_type = #{vars["{#{expr}}"][1]}.object_type AND
+                       #{this_table}.object_id = #{vars["{#{expr}}"][1]}.object_id}
+          else
+            where << %{
+              (#{this_table}.object_id in (%s) AND #{this_table}.object_type = 'RdfLiteral') OR
+              (#{this_table}.object_id in (%s) AND #{this_table}.object_type = 'RdfResource')
+            }
+            where_params << [ :literal, expr_parser.parse(expr) ]
+            where_params << [ :resource, expr_parser.parse(expr) ]
           end
         else
           where << %{#{this_table}.object_type = 'RdfLiteral' AND #{this_table}.object_id = %s}

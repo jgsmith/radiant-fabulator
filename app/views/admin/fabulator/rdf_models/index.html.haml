@@ -8,6 +8,8 @@
         - render_region :thead do |thead|
           - thead.title_header do
             %th.database Model
+          - thead.namespace_header do
+            %th.namespace Namespace
           - thead.size_header do
             %th.size Size
           - thead.modify_header do
@@ -21,6 +23,9 @@
                 %td.snippet
                   = image('snippet', :alt => '')
                   %span= link_to database.name, edit_admin_fabulator_rdf_model_url(database)
+              - tbody.namespace_cell do
+                %td.namespace
+                  %span= database.namespace
               - tbody.size_cell do
                 %td.size
                   %span= database.size

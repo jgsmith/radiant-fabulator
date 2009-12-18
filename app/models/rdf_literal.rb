@@ -1,11 +1,22 @@
 class RdfLiteral < ActiveRecord::Base
   has_many :rdf_statements, :as => :object
+  belongs_to :rdf_type, :class_name => 'RdfResource'
+  belongs_to :rdf_language
 
      # t.references :rdf_type
      # t.references :rdf_language
      # t.text       :object_lit
 
+  # eventually need to support language and type notation
+  def to_s
+    self.object_lit
+  end
+
   def self.build(str,l=nil,t=nil, base=nil)
+    if t.is_a?(String)
+      t = RdfResource.from_uri(t)
+    end
+
     if l.nil?
       if t.nil?
         lts = self.find(:all, :conditions => [ 'object_lit = ?', str ])

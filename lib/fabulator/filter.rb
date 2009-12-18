@@ -8,7 +8,6 @@ module Fabulator
 
     def apply_filter(params, fields)
       # do special ones first
-      Rails.logger.info("Filter(#{@filter_type}, #{fields.join(", ")})")
       case @filter_type
         when 'trim':
           fields.each do |f|

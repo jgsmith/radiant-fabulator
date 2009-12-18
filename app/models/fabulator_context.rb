@@ -20,14 +20,14 @@ class FabulatorContext < ActiveRecord::Base
         'page_id = ? AND session = ?',
         p.id, p.request.session[:session_id]
       ] )
-      if c.user.nil?
+      if !c.nil? && c.user.nil?
         c.update_attribute(:user_id, p.request.session[:user_id])
-        return c;
       end
     end
+    p.fabulator_context = c.context unless c.nil?
     return c unless c.nil?
     self.new(
-      :context => { }, 
+      :context => p.fabulator_context,
       :page_id => p.id,
       :user_id => p.request.session[:user_id],
       :session => p.request.session[:session_id]

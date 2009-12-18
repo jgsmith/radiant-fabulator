@@ -8,11 +8,23 @@ module Fabulator
       @name = xml.attributes.get_attribute_ns(FAB_NS, 'name').value
       @rdf_model = (xml.attributes.get_attribute_ns(FAB_NS, 'rdf-model').value rescue rdf_model)
       @transitions = [ ]
+      @pre_actions = [ ]
+      @post_actions = [ ]
       xml.each_element do |e|
         next unless e.namespaces.namespace.href == FAB_NS
         case e.name
           when 'goes-to':
             @transitions << Transition.new(e, @rdf_model)
+          when 'rdf-assert':
+            @pre_actions << Assert.new(e, @rdf_model)
+          when 'rdf-deny':
+            @pre_actions << Deny.new(e, @rdf_model)
+          when 'rdf-assertion':
+            @post_actions << Assertion.new(e, @rdf_model)
+          when 'rdf-denial':
+            @post_actions << Denial.new(e, @rdf_model)
+          when 'rdf-query':
+            @pre_actions << Query.new(e, @rdf_model)
         end
       end
     end
@@ -36,6 +48,26 @@ module Fabulator
         end
       end
       return best_match
+    end
+
+    def run_pre(context)
+      # do queries, denials, assertions in the order given
+      @pre_actions.each do |action|
+        if !action.run(context)
+          return false
+        end
+      end
+      return true
+    end
+
+    def run_post(context)
+      # do queries, denials, assertions in the order given
+      @post_actions.each do |action|
+        if !action.run(context)
+          return false
+        end
+      end
+      return true
     end
   end
 end

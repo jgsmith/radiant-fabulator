@@ -20,6 +20,8 @@ module Fabulator
         next unless e.namespaces.namespace.href == FAB_NS
         case e.name
           when 'when':
+            @select = (e.attributes.get_attribute_ns(FAB_NS, 'select').value rescue '')
+            @select = (@select.split('/').join('.') + '.').gsub(/\.+/, '.').gsub(/^\./,'') unless @select == ''
             e.each_element do |ee|
               next unless ee.namespaces.namespace.href == FAB_NS
               case ee.name
@@ -52,7 +54,21 @@ module Fabulator
     end
 
     def validate_params(context,params)
-      f_p = self.apply_filters(params)
+      if @select == ''
+        my_params = params
+        my_params.delete('url')
+        my_params.delete('action')
+        my_params.delete('controller')
+        my_params.delete('id')
+      else
+        my_params = { }
+        params.each_pair do |k,v|
+          if k[0..@select.length-1] == @select
+            my_params[k[@select.length..k.length-1]] = v
+          end
+        end
+      end
+      f_p = self.apply_filters(my_params)
 
       res = { :missing => [ ], :valid => { }, :invalid => [ ], :unknown => [ ], :errors => [ ] }
       res[:missing] = @required_params.select {|k| f_p[k].nil? || f_p[k].blank? }
@@ -74,15 +90,23 @@ module Fabulator
         end
       end
 
-      res[:valid] = f_p
+      if @select == ''
+        res[:valid] = f_p
+      else
+        res[:valid] = { }
+        f_p.each_pair do |k,v|
+          res[:valid][@select + k] = v
+        end
+      end
       res[:invalid].uniq!
+      res[:invalid] = res[:invalid].collect{|k| @select + k}
       res[:invalid].each do |k|
         res[:valid].delete(k)
       end
+      res[:unknown] = res[:unknown].collect{|k| @select + k}
       res[:unknown].each do |k|
         res[:valid].delete(k)
       end
-      res[:unknown] = res[:unknown] - [ 'url', 'action', 'controller', 'id' ]
 
       res[:score] = (res[:valid].size+1)*(params.size)
       res[:score] = res[:score] / (res[:missing].size + 1)
@@ -100,14 +124,11 @@ module Fabulator
 
     def run(context)
       # do queries, denials, assertions in the order given
-      Rails.logger.info("\n\n\nRunning transition!\n\n\n")
       @actions.each do |action|
-        Rails.logger.info(YAML::dump(action))
         if !action.run(context)
           return false
         end
       end
-      Rails.logger.info("\n\ntransition is run!\n\n\n")
       return true
     end
   end
