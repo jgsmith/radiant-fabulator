@@ -21,6 +21,5 @@ module Fabulator
         e.nil? ? nil : -e
       end
     end
- 
   end
 end

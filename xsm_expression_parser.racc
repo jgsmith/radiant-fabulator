@@ -70,16 +70,16 @@ rule
     | relative_location_path '/' step { result = val[0] + [ val[2] ] }
     | relative_location_path '//' step { result = val[0] + [ Fabulator::XSM::AxisDescendentOrSelf.new(val[2]) ] }
 
-  step: axis node_test predicates { result = Fabulator::XSM::Step.new(val[0], val[1], val[2]) }
-    | axis '{' DOLLAR_QNAME '}' predicates { result = Fabulator::XSM::Step.new(val[0], val[2], val[4]) }
-    | AXIS_METHOD '::' node_test predicates { result = Fabulator::XSM::FunctionStep.new(val[2], nil, val[3]) }
-    | AXIS_METHOD '::' FUNCTION_NAME '(' opt_args ')' predicates { result = Fabulator::XSM::FunctionStep.new(val[2], val[4], val[6]) }
+  step: axis node_test predicates { result = Fabulator::XSM::Predicates.new(Fabulator::XSM::Step.new(val[0], val[1]), val[2]) }
+    | axis '{' DOLLAR_QNAME '}' predicates { result = Fabulator::XSM::Predicates.new(Fabulator::XSM::Step.new(val[0], Fabulator::XSM::QName.new(val[2])), val[4]) }
+    | AXIS_METHOD '::' node_test predicates { result = Fabulator::XSM::Predicates.new(Fabulator::XSM::Function.new(val[2], []), val[3]) }
+    | AXIS_METHOD '::' FUNCTION_NAME '(' opt_args ')' predicates { result = Fabulator::XSM::Predicates.new(Fabulator::XSM::Function.new(val[2], val[4]), val[6]) }
     | '.' { result = Fabulator::XSM::CurrentContext.new }
     | '..' { result = Fabulator::XSM::AncestorContext.new }
 
   axis:
     | AXIS_NAME '::' { result = Fabulator::XSM::Axis.new(val[0]) }
-    | '@' { result = Fabulator::XSM::AxisAttribute.new  }
+    | '@' { result = Fabulator::XSM::Axis.new('attribute')  }
 
   predicates: { result = [ ] }
     | predicates '[' expr ']' { result = val[0] + [ val[2] ] }
@@ -87,16 +87,16 @@ rule
   primary_expr:
     DOLLAR_QNAME
     | '<' expr '>'
-    | '(' expr ')'
-    | LITERAL
-    | NUMBER
-    | FUNCTION_NAME '(' opt_args ')'
+    | '(' expr ')' { result = val[1] }
+    | LITERAL { result = Fabulator::XSM::Literal.new(val[0]) }
+    | NUMBER { result = Fabulator::XSM::Literal.new(val[0]) }
+    | FUNCTION_NAME '(' opt_args ')' { result = Fabulator::XSM::Function.new(val[0], val[2]) }
 
-  opt_args:
-    | args
+  opt_args: { result = [ ] }
+    | args 
 
-  args: expr
-    | args ',' expr
+  args: expr { result = [ val[0] ] }
+    | args ',' expr { result = val[0] + [ val[2] ] }
 
   node_test: QNAME
     | NUMBER
@@ -124,7 +124,14 @@ end
     :event_type => %r{(?:processing-instruction|comment|text|node)},
     :axis_name => %r{(?:attribute|child|child-or-self|descendant|descendant-or-self|method|self)},
     :namespace_name => %r{(?:context|global|local|session|universal)},
+    :number => %r{(-?\\d+(?:\\.\\d+)?|\\.\\d+)},
   }
+
+  @@regex[:axis] = %r{(#{@@regex[:ncname]})\\s*(?=::)}
+  @@regex[:name_colon_star] = %r{(#{@@regex[:ncname]}:\\*)}
+  @@regex[:qname] = %r{((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]})}
+  @@regex[:dollar_qname] = %r{\\$#{@@regex[:qname]}}
+  @@regex[:function_name] = %r{#{@@regex[:qname]}\\s*(?=\\()}
 
   @@preceding_tokens = { }
   [%{
@@ -135,18 +142,8 @@ end
     == & && ||
   }.split(/\s*/), '[', ',', '$' ].each { |t| @@preceding_tokens[t] = true }
 
-  @@regex[:general] = Regexp.compile(%{
-    (?:
-      ((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]})\\s*(?=\\()
-      |(#{@@regex[:ncname]})\\s*(?=::)
-      |(#{@@regex[:ncname]}:\\*)                       
-      |((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]}) 
-      |('[^']*'|"[^"]*")                             
-      |(-?\\d+(?:\\.\\d+)?|\\.\\d+)                 
-      |\\$((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]})
-      |(#{@@regex[:simple_tokens]})
-    )},'x')
-  @@regex[:general] = Regexp.compile(%{(?:((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]})\\s*(?=\\()|(#{@@regex[:ncname]})\\s*(?=::)|(#{@@regex[:ncname]}:\\*)|((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]})|('[^']*'|"[^"]*")|(-?\\d+(?:\\.\\d+)?|\\.\\d+)|\\$((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]})|(#{@@regex[:simple_tokens]}))})
+  @@regex[:general] = Regexp.compile(%{(?:#{@@regex[:function_name]}|#{@@regex[:axis]}|#{@@regex[:name_colon_star]}|#{@@regex[:qname]}|('[^']*'|"[^"]*")|#{@@regex[:number]}|#{@@regex[:dollar_qname]}|(#{@@regex[:simple_tokens]}))})
+
   def next_token  
     @last_token = @token
     @token = nil
