@@ -1,8 +1,14 @@
 class FabulatorPage < Page
+  description %{
+    A Fabulator page allows you to create a simple, interactive
+    web application that manages data in RDF models defined in the
+    Fabulator > RDF Models tab of the administrative area.
+  }
   # need a reasonable name for the XML part
   XML_PART_NAME = 'extended'
 
   after_save :set_defaults
+  attr_accessor :resource_ln
 
   # create tags to access filtered data in page display
   # might also create tags for form fields, etc., so it's easy to
@@ -10,6 +16,37 @@ class FabulatorPage < Page
 
   def cache?
     false
+  end
+
+  def find_by_url(url, live = true, clean = false)
+    Rails.logger.info("find_by_url(#{url}, #{live}, #{clean})")
+    Rails.logger.info("invoking super")
+    p = super
+    Rails.logger.info("returning from super")
+    Rails.logger.info("Found #{p}")
+    return p if !p.nil? && !p.is_a?(FileNotFoundPage)
+    Rails.logger.info("Seeing if we have a resource")
+
+    url = clean_url(url) if clean
+    Rails.logger.info("Our url: #{self.url}")
+    Rails.logger.info("Target url: #{url}")
+    if url =~ %r{^#{ self.url }([-_0-9a-zA-Z]+)/?$}
+      Rails.logger.info("resource: #{$1}")
+      self.resource_ln = $1
+      return self
+    else
+      return p
+    end
+  end
+
+  def url
+    Rails.logger.info("Getting url")
+    u = super
+    if !self.resource_ln.nil?
+      u = u + '/' + self.resource_ln
+    end
+    Rails.logger.info("Returning '#{u}' as url")
+    u
   end
 
   def state_machine
@@ -23,6 +60,7 @@ class FabulatorPage < Page
 
     if @roots['locals'].nil?
       @roots['locals'] = Fabulator::XSM::Context.new('locals', @roots, nil, [])
+      @roots['locals'].traverse_path(['resource'], true).first.value = self.resource_ln if self.resource_ln
       self.state_machine.init_context(@roots['locals'])
     end
     @roots['locals']
@@ -30,6 +68,7 @@ class FabulatorPage < Page
 
   def fabulator_context=(c)
     fc = self.fabulator_context
+    @roots = { } if @roots.nil?
     @roots['locals'] = c
   end
 
@@ -73,6 +112,7 @@ class FabulatorPage < Page
       if sm.context.empty?
         sm.init_context(self.fabulator_context)
       end
+      #sm.context.merge!(self.resource_ln, ['resource'] ) if self.resource_ln
       if request.method == :post
         sm.run(params)
         # save context
@@ -115,6 +155,13 @@ class FabulatorPage < Page
     missing_args = tag.locals.page.missing_args
 
     form_base = tag.attr['base']
+    if form_base.nil?
+      root = c
+      form_base = c.path.gsub(/^.*::/, '').gsub('/', '.').gsub(/^\.+/, '')
+    else
+      root = c.nil? ? nil : c.eval_expression('/' + form_base.gsub('.', '/')).first
+    end
+    root = c
 
     xml = %{<view><form>} + xml + %{</form></view>}
     doc = REXML::Document.new xml
@@ -122,7 +169,6 @@ class FabulatorPage < Page
     form_el = REXML::XPath.first(doc,'/view/form')
     form_el.add_attribute('id', form_base)
 
-    root = c.nil? ? nil : c.eval_expression('/' + form_base.gsub('.', '/')).first
     # add default values
     # borrowed heavily from http://cpansearch.perl.org/src/JSMITH/Gestinanna-0.02/lib/Gestinanna/ContentProvider/XSM.pm
 
@@ -221,8 +267,11 @@ class FabulatorPage < Page
   tag 'for-each' do |tag|
     selection = tag.attr['select']
     c = get_fabulator_context(tag)
+    Rails.logger.info("context: #{YAML::dump(c)}")
+    Rails.logger.info("for-each: #{selection} from #{c}")
     items = c.nil? ? [] : c.eval_expression(selection)
     res = ''
+    Rails.logger.info("Found #{items.size} items for for-each")
     items.each do |i|
       next if i.empty?
       tag.locals.fabulator_context = i
@@ -290,11 +339,14 @@ private
 
   def get_fabulator_context(tag)
     c = tag.locals.fabulator_context
-    if c.nil? || c.is_a?(Hash)
+    if c.nil? 
       c = tag.locals.page.fabulator_context 
-      if c.nil? || c.is_a?(Hash)
+      if c.nil?
         c = tag.globals.page.fabulator_context
       end
+    end
+    if c.is_a?(Hash)
+      c = c[:data]
     end
     return c
   end
