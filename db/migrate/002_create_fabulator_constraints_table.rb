@@ -3,7 +3,8 @@ class CreateFabulatorConstraintsTable < ActiveRecord::Migration
     create_table :fabulator_constraints do |t|
       t.string :name, :null => false
       t.text   :description
-      t.text   :lua_fn, :null => false, :default => ''
+      t.text   :definition, :null => false, :default => ''
+      t.text   :compiled_def
       t.integer :lock_version, :default => 0
       t.references :updated_by
       t.references :created_by

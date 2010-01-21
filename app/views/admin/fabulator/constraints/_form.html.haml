@@ -12,10 +12,10 @@
           = f.label :description, "Description"
           ~ f.text_area :description, :class => "textarea large", :style => "width: 100%"
       .row
-      - form.edit_lua_fn do
+      - form.edit_fn do
         %p.content
-          = f.label :lua_fn, "Lua Function"
-          = f.text_area :lua_fn, :class => "textarea large", :style => "width: 100%"
+          = f.label :definition, "Lua Function"
+          = f.text_area :compiled_fn, :class => "textarea large", :style => "width: 100%"
   - render_region :form_bottom do |form_bottom|
     - form_bottom.edit_buttons do
       %p.buttons{:style=>"clear: left"}
