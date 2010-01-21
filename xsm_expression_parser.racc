@@ -5,17 +5,42 @@ class Fabulator::XSM::ExpressionParser
   # instead of compiling ruby code, we'll instantiate objects to handle the
   # run-time performance
 
-  start expr
+  start statements
 
 rule
+  statements: statement { result = Fabulator::XSM::StatementList.new; result.add_statement(val[0]) }
+    | statements ';' statement { result = val[0]; result.add_statement(val[1]) }
+
+  statement: expr
+    | let_expr
+
   expr: or_expr
     | range_expr
+    | if_expr
+    | for_expr
+    | quant_expr
+
+  let_expr: LET DOLLAR_QNAME ':=' expr { result = Fabulator::XSM::LetExpr(val[1], val[3]) }
+  
+
+  if_expr: IF '(' expr ')' THEN expr ELSE expr { result = Fabulator::XSM::IfExpr.new(val[2], val[5], val[7]) }
+
+  for_expr: FOR for_vars RETURN expr { result = Fabulator::XSM::ForExpr.new(val[1], val[3]) }
+
+  for_vars: for_var { result = [ val[0] ] }
+    | for_vars COMMA for_var { result = val[0] + [ val[2] ] }
+
+  for_var: DOLLAR_QNAME IN expr { result = Fabulator::XSM::ForVar.new(val[0], val[2]) }
+
+  quant_expr: SOME for_vars SATISFIES expr { result = Fabulator::XSM::SomeExpr(val[1], val[3]) }
+    | EVERY for_vars SATISFIES expr { result = Fabulator::XSM::EveryExpr(val[1], val[3]) }
 
   or_expr: and_expr
     | or_expr OR and_expr { result = Fabulator::XSM::OrExpr.new(val[0], val[2]) }
 
   and_expr: equality_expr
     | and_expr AND equality_expr { result = Fabulator::XSM::AndExpr.new(val[0], val[2]) }
+    | and_expr EXCEPT equality_expr { result = Fabulator::XSM::ExceptExpr.new(val[0], val[2]) }
 
   equality_expr: relational_expr
     | equality_expr '=' relational_expr { result = Fabulator::XSM::EqExpr.new(val[0], val[2]) }
@@ -28,6 +53,7 @@ rule
     | relational_expr '>=' additive_expr { result = Fabulator::XSM::LteExpr.new(val[2], val[0]) }
 
   range_expr: additive_expr '..' additive_expr { result = Fabulator::XSM::RangeExpr.new(val[0], val[2]) }
+    | additive_expr TO additive_expr { result = Fabulator::XSM::RangeExpr.new(val[0], val[2]) }
 
   additive_expr: multiplicative_expr
     | additive_expr '+' multiplicative_expr { result = Fabulator::XSM::AddExpr.new(val[0], val[2]) }
@@ -60,8 +86,8 @@ rule
   # / => local data root
   # // => local data descendent or self
 
-  absolute_location_path: '/' { result = [ Fabulator::XSM::RootContext.new ] }
-    | '/' relative_location_path { result = [ Fabulator::XSM::RootContext.new ] + val[1] }
+  absolute_location_path: '/' { result = Fabulator::XSM::RootContext.new }
+    | '/' relative_location_path { result = Fabulator::XSM::PathExpr.new(Fabulator::XSM::RootContext.new, [], val[1]) }
     | '//' relative_location_path { result = [ Fabulator::XSM::RootContext.new, Fabulator::XSM::AxisDescendentOrSelf.new(val[1][0]) ] + val[1][1..val[1].size-1] }
     | AXIS_NAME '::' '/' relative_location_path { result = [ Fabulator::XSM::RootContext.new(val[0]) ] + val[3] }
     | AXIS_NAME '::' '//' relative_location_path { result = [ Fabulator::XSM::RootContext.new(val[0]), Fabulator::XSM::AxisDescendentOrSelf.new(val[3][0]) ] + val[3][1..val[3].size-1] }
@@ -84,9 +110,9 @@ rule
   predicates: { result = [ ] }
     | predicates '[' expr ']' { result = val[0] + [ val[2] ] }
 
+    #| '<' expr '>'
   primary_expr:
-    DOLLAR_QNAME
-    | '<' expr '>'
+    DOLLAR_QNAME { result = Fabulator::XSM::Var.new(val[0]) }
     | '(' expr ')' { result = val[1] }
     | LITERAL { result = Fabulator::XSM::Literal.new(val[0]) }
     | NUMBER { result = Fabulator::XSM::Literal.new(val[0]) }
@@ -99,7 +125,6 @@ rule
     | args ',' expr { result = val[0] + [ val[2] ] }
 
   node_test: QNAME
-    | NUMBER
     | '*'
 
 end
@@ -119,19 +144,19 @@ end
   end
 
   @@regex = {
-    :simple_tokens => %r{\.\.|::|!=|>=|<=|==|\|\||&&|\/\/|\.|@|\*|\(|\)|\[|\]|\{|\}|\/|\||\+|-|=|>|<|&|,},
+    :simple_tokens => %r{\.\.|::|!=|>=|<=|==|\|\||&&|\/\/|:=|\.|@|\*|\(|\)|\[|\]|\{|\}|\/|\||\+|-|=|>|<|&|,|;},
     :ncname => %r{(?:[a-zA-Z_][a-zA-Z0-9_.-]*)},
     :event_type => %r{(?:processing-instruction|comment|text|node)},
     :axis_name => %r{(?:attribute|child|child-or-self|descendant|descendant-or-self|method|self)},
     :namespace_name => %r{(?:context|global|local|session|universal)},
-    :number => %r{(-?\\d+(?:\\.\\d+)?|\\.\\d+)},
+    :number => %r{(-?\d+(?:\.\d+)?|\.\d+)},
   }
 
-  @@regex[:axis] = %r{(#{@@regex[:ncname]})\\s*(?=::)}
-  @@regex[:name_colon_star] = %r{(#{@@regex[:ncname]}:\\*)}
+  @@regex[:axis] = %r{(#{@@regex[:ncname]})\s*(?=::)}
+  @@regex[:name_colon_star] = %r{(#{@@regex[:ncname]}:\*)}
   @@regex[:qname] = %r{((?:#{@@regex[:ncname]}:)?#{@@regex[:ncname]})}
-  @@regex[:dollar_qname] = %r{\\$#{@@regex[:qname]}}
-  @@regex[:function_name] = %r{#{@@regex[:qname]}\\s*(?=\\()}
+  @@regex[:dollar_qname] = %r{\$#{@@regex[:qname]}}
+  @@regex[:function_name] = %r{#{@@regex[:qname]}\s*(?=\([^:])}
 
   @@preceding_tokens = { }
   [%{
@@ -142,14 +167,38 @@ end
     == & && ||
   }.split(/\s*/), '[', ',', '$' ].each { |t| @@preceding_tokens[t] = true }
 
-  @@regex[:general] = Regexp.compile(%{(?:#{@@regex[:function_name]}|#{@@regex[:axis]}|#{@@regex[:name_colon_star]}|#{@@regex[:qname]}|('[^']*'|"[^"]*")|#{@@regex[:number]}|#{@@regex[:dollar_qname]}|(#{@@regex[:simple_tokens]}))})
+  @@regex[:general] = Regexp.compile(%{^(?:#{@@regex[:function_name]}|#{@@regex[:axis]}|#{@@regex[:name_colon_star]}|#{@@regex[:qname]}|('[^']*'|"[^"]*")|#{@@regex[:number]}|#{@@regex[:dollar_qname]}|(#{@@regex[:simple_tokens]}))})
 
   def next_token  
-    @last_token = @token
     @token = nil
     while @curpos < @source.length && @source[@curpos..@curpos] =~ /\s/ do
       @curpos = @curpos + 1
     end
+
+    # skip comments delimited by (:  :)
+    # comments can be nested
+    # these are XPath 2.0 comments
+    #
+    if @curpos < @source.length && @source[@curpos..@curpos+1] == '(:'
+      comment_depth = 1
+      @curpos = @curpos + 2
+      while comment_depth > 0 && @curpos < @source.length
+        if @source[@curpos..@curpos+1] == '(:'
+          comment_depth = comment_depth + 1
+          @curpos = @curpos + 1
+        end
+        if @source[@curpos..@curpos+1] == ':)'
+          comment_depth = comment_depth - 1
+          @curpos = @curpos + 1
+        end
+        @curpos = @curpos + 1
+      end
+    end
+
+    while @curpos < @source.length && @source[@curpos..@curpos] =~ /\s/ do
+      @curpos = @curpos + 1
+    end
+        
     if @curpos >= @source.length
       @last_token = nil
       return [ false, false ]
@@ -159,10 +208,27 @@ end
       if @source[@curpos..@curpos] == '*'
         @token = [ '*', '*' ]
       else
-        res = @@regex[:ncname].match(@source[@curpos..@source.length-1])
-        if !res.nil? && res[1] != ''
-          ncname = (res[1] rescue '*doh*')
+        if @source[@curpos..@source.length-1] =~ /^(#{@@regex[:ncname]})/
+          ncname = $1
           case ncname
+            when 'let':
+              @token = [ :LET, 'let' ]
+            when 'except':
+              @token = [ :EXCEPT, 'except' ]
+            when 'every':
+              @token = [ :EVERY, 'every' ]
+            when 'some':
+              @token = [ :SOME, 'some' ]
+            when 'satisfies':
+              @token = [ :SATISFIES, 'satisfies' ]
+            when 'if':
+              @token = [ :IF, 'if' ]
+            when 'then':
+              @token = [ :THEN, 'then' ]
+            when 'else':
+              @token = [ :ELSE, 'else' ]
+            when 'to':
+              @token = [ :TO, 'to' ]
             when 'and':
               @token = [ :AND, 'and' ]
             when 'or':
@@ -171,10 +237,11 @@ end
               @token = [ :MOD, 'mod' ]
             when 'div':
               @token = [ :DIV, 'div' ]
+            when '*doh*':
+              # do nothing
+              @token = nil
             else
-              if !ncname.nil? && ncname.length > 0
-                raise "Expected and, or, mod, or div, but got '#{ncname}'"
-              end
+              @token = [ :QNAME, ncname ]
           end
         end
       end
@@ -185,10 +252,9 @@ end
     end
 
     if @token.nil?
-      puts "source: [#{@source[@curpos..@source.length-1]}]"
-     #puts "regex: #{@@regex[:general]}"
       res = @@regex[:general].match(@source[@curpos..@source.length-1])
       #@source[@curpos..@source.length-1] =~ @@regex[:general]
+      #res = [ nil, $1, $2, $3, $4, $5, $6, $7, $8 ]
       if !res[1].nil?
         @token = [ :FUNCTION_NAME, res[1] ]
       elsif !res[2].nil?
@@ -215,6 +281,7 @@ end
     if !@token[1].nil?
       @curpos = @curpos + @token[1].length
     end
-    puts "Token: [ #{@token[0]}, #{@token[1]} ]"
+    @last_token = @token
+    Rails.logger.info("Token: [#{@token[0].to_s},#{@token[1].to_s}]")
     return @token
   end
