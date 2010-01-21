@@ -1,10 +1,9 @@
 module Fabulator
   module XSM
     class Step
-      def initialize(a,n,p)
+      def initialize(a,n)
         @axis = a
         @node_test = n
-        @predicate = p
       end
 
       def run(context)
@@ -13,13 +12,14 @@ module Fabulator
             @axis != context.axis
           c = context.roots[@axis]
         end
+        Rails.logger.info("Looking for #{@node_test} under #{c.path}")
         if @node_test == '*'
           possible = c.children
         else
           possible = c.children.select{ |cc| cc.name == @node_test }
         end
-        # TODO: run predicates
-        possible
+        Rails.logger.info("Found #{possible.size} children")
+        return possible
       end
 
       def create_node(context)

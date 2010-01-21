@@ -10,7 +10,10 @@ module Fabulator
         # we want to run through all of the predicates and return true if
         # they all return true
         result = [ ]
-        @expr.run(context).each do |c|
+        possible = @expr.run(context)
+        Rails.logger.info("Predicates found #{possible.size} items")
+        return possible if @predicates.nil? || @predicates.empty?
+        possible.each do |c|
           @predicates.each do |p|
             res = p.run(context)
             if res.is_a?(Array)
