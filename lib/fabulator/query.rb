@@ -30,20 +30,23 @@ module Fabulator
                   conditions << (RdfLiteral.first(:conditions => [ 'obj_lit = ?', p[1] ]).id rescue 0)
                 else
                   possible = p[1].run(context.data).collect{|c| c.value} - [ nil ]
+                  Rails.logger.info("Ran #{YAML::dump(p[1])}\n and got #{YAML::dump(possible)}")
                   conditions << RdfLiteral.find(:all, :conditions => [ 'obj_lit in ?', possible ]).collect{|c| c.id}
                 end
               when :resource:
                 if p[1].is_a?(String)
-                  conditions << (RdfResource.from_uri(p[1]).id rescue 0)
+                  conditions << (RdfResource.from_uri(p[1], rdf_model.rdf_namespace).id rescue 0)
                 else
                   possible = p[1].run(context.data).collect{|c| c.value} - [ nil ]
-                  conditions << possible.collect{|u| RdfResource.from_uri(u).id rescue nil} - [ nil ]
+                  Rails.logger.info("Ran #{YAML::dump(p[1])}\n and got #{YAML::dump(possible)}")
+                  conditions << possible.collect{|u| Rails.logger.info("Looking up resource for #{u}"); RdfResource.from_uri(u, rdf_model.rdf_namespace).id rescue 0}
                 end
               when :namespace:
                 conditions << (RdfNamespace.first(:conditions => [ 'namespace = ?', p[1] ]).id rescue 0)
             end
           end
         end
+        conditions = conditions - [0, nil, []]
         if (" " + s[:simple_where] + " ").split('%s').length == conditions.length
           results = results + RdfQueryResult.find_by_sql(%{
             SELECT DISTINCT #{s[:select]}
@@ -53,10 +56,13 @@ module Fabulator
           })
         end
       end
-      if !results.empty? && !@goto.nil?
-        context.merge!(results.uniq, @as)
-        context.state = @goto
-        return false
+      if !results.empty? #&& !@goto.nil?
+        Rails.logger.info("Merging #{YAML::dump(results)}")
+        context.merge!(results, @as)
+        Rails.logger.info("Context: #{YAML::dump(context)}")
+        Rails.logger.info("  Go to State: [#{@goto}]")
+        context.state = @goto unless @goto.nil?
+        return !@goto.nil?
       end
       return true
     end
