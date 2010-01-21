@@ -3,6 +3,18 @@ class FabulatorFilter < ActiveRecord::Base
   belongs_to :updated_by, :class_name => 'User'
   belongs_to :created_by, :class_name => 'User'
 
-  def run_filter(params, fields)
+  def before_save
+    # compile constraint
+    p = Fabulator::XSM::ExpressionParser.new
+    Rails.logger.info("Definition:  [#{self.definition}]")
+    self.compiled_def = YAML::dump(p.parse(self.definition))
+    true
+  end
+
+  # handles running the constraint
+  def run_filter(context)
+    f = (YAML::Load(self.compiled_def) rescue nil)
+    return [] if f.nil?
+    return f.run(context)
   end
 end
