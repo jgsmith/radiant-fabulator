@@ -31,7 +31,7 @@ module Fabulator
             when :literal:
               conditions << ((RdfLiteral.first(:conditions => [ 'obj_lit = ?', p[1] ]).id rescue 0) || 0)
             when :resource:
-              conditions << ((RdfResource.from_uri(p[1]).id rescue 0) || 0)
+              conditions << ((RdfResource.from_uri(p[1], rdf_model.rdf_namespace).id rescue 0) || 0)
             when :namespace:
               conditions << ((RdfNamespace.first(:conditions => [ 'namespace = ?', p[1] ]).id rescue 0) || 0)
           end
