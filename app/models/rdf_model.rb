@@ -84,11 +84,62 @@ class RdfModel < ActiveRecord::Base
         return [] if p.new_record?
         if o.nil?
           # all <o> with this s and p
-          return self.rdf_statements.find(:all, :conditions => [ 'statement_id = ? AND predicate_id = ?', s.id, p.id ])
+          return self.rdf_statements.find(:all, :conditions => [ 'subject_id = ? AND predicate_id = ?', s.id, p.id ])
         else
           # all <s,p,o> with this s,p,o
           return [] if o.new_record?
           return RdfStatement.find(:all,
+            :conditions => [
+              %{subject_id = ? AND predicate_id = ? AND object_id = ? AND
+                rdf_model_id = ? AND object_type = ?}, s.id, p.id, o.id,
+                self.id, o.class.to_s ]
+          )
+        end
+      end
+    end
+  end
+
+  def count_statements(s=nil,p=nil,o=nil)
+    if s.nil?
+      if p.nil?
+        if o.nil?
+          # a sequence of all statements in this model
+          return self.rdf_statements.count
+        else
+          # all <s,p> with this o
+          return 0 if o.new_record?
+          return o.rdf_statements.count(:conditions => [ 'rdf_model_id = ?', self.id ])
+        end
+      else
+        return 0 if p.new_record?
+        if o.nil?
+          # all <s,o> with this p
+          return self.rdf_statements.count(:conditions => [ 'predicate_id = ?', p.id ])
+        else
+          # all <s> with this p and o
+          return o.rdf_statements.count(:conditions => [ 'predicate_id = ? AND rdf_model_id = ?', p.id, self.id ])
+        end
+      end
+    else
+      return 0 if s.new_record?
+      if p.nil?
+        if o.nil?
+          # all <p,o> with this s
+          return s.rdf_statements.count(:conditions => [ 'rdf_model_id = ?', self.id])
+        else
+          # all <p> with this s and o
+          return 0 if o.new_record?
+          return o.rdf_statements.count(:conditions => [ 'rdf_model_id = ? AND subject_id = ?', self.id, s.id ])
+        end
+      else
+        return 0 if p.new_record?
+        if o.nil?
+          # all <o> with this s and p
+          return self.rdf_statements.count(:conditions => [ 'statement_id = ? AND predicate_id = ?', s.id, p.id ])
+        else
+          # all <s,p,o> with this s,p,o
+          return 0 if o.new_record?
+          return RdfStatement.count(
             :conditions => [
               %{subject_id = ? AND predicate_id = ? AND object_id = ? AND
                 rdf_model_id = ? AND object_type = ?}, s.id, p.id, o.id,
@@ -125,6 +176,8 @@ class RdfModel < ActiveRecord::Base
         else
           # all <s,p> with this o
           return if o.new_record?
+          return if o.bnode? && self.count_statements(o,nil,nil) > 0
+
           o.rdf_statements.delete(:conditions => [ 'rdf_model_id = ?' , self.id ])
         end
       else
@@ -134,6 +187,9 @@ class RdfModel < ActiveRecord::Base
           self.rdf_statements.delete(:conditions => [ 'predicate_id = ?', p.id ])
         else
           # all <s> with this p and o
+          return if o.new_record?
+          return if o.bnode? && self.count_statements(o,nil,nil) > 0
+
           return o.rdf_statements.delete(:conditions => [ 'predicate_id = ?  AND rdf_model_id = ?', p.id, self.id ])
         end
       end
@@ -142,21 +198,34 @@ class RdfModel < ActiveRecord::Base
       if p.nil?
         if o.nil?
           # all <p,o> with this s  
-          return s.rdf_statements.find(:conditions => [ 'rdf_model_id = ?', self.id])
+          s.rdf_statements.find(:all, :conditions => [ 'rdf_model_id = ?', self.id]).each do |ob|
+            ob.destroy
+          end
         else
           # all <p> with this s and o
           return if o.new_record?
-          o.rdf_statements.delete(:conditions => [ 'rdf_model_id = ? AND subject_id = ?', self.id, s.id ])
+          return if o.bnode? && self.count_statements(o,nil,nil) > 0
+
+          o.rdf_statements.find(:all, :conditions => [ 'rdf_model_id = ? AND subject_id = ?', self.id, s.id ]).each do |ob|
+            ob.destroy
+          end
         end
       else
         return if p.new_record?
         if o.nil?
           # all <o> with this s and p
-          self.rdf_statements.delete(:conditions => [ 'statement_id = ? AND predicate_id = ?', s.id, p.id ])
+          self.rdf_statements.find(:all, :conditions => [ 'subject_id = ? AND predicate_id = ?', s.id, p.id ]).each do |ob|
+            ob.destroy
+          end
         else
           # all <s,p,o> with this s,p,o
           return if o.new_record?
-          o.rdf_statements.delete(:conditions => [ 'rdf_model_id = ? AND statement_id = ? AND predicate_id = ?', self.id, s.id, p.id ])
+          return if o.bnode? && self.count_statements(o,nil,nil) > 0
+
+          Rails.logger.info("delete <#{s},#{p},#{o}>")
+          o.rdf_statements.find(:all, :conditions => [ 'rdf_model_id = ? AND subject_id = ? AND predicate_id = ?', self.id, s.id, p.id ]).each do |ob|
+            ob.destroy
+          end
         end
       end
     end
