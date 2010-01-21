@@ -54,13 +54,25 @@ class RdfResource < ActiveRecord::Base
       end
     else
       bits = uri.split(":")
-      ln = bits.pop
-      ns_s = bits.join(":")
-      if ns = RdfNamespace.first(:conditions => [ 'namespace = ?', ns_s + ':'])
-        return ns[ln]
+      if bits.size > 1
+        ln = bits.pop
+        ns_s = bits.join(":")
+        if ns = RdfNamespace.first(:conditions => [ 'namespace = ?', ns_s + ':'])
+          return ns[ln]
+        else
+          ns = RdfNamespace.create(:namespace => ns_s + ':')
+          return ns[ln]
+        end
       else
-        ns = RdfNamespace.create(:namespace => ns_s + ':')
-        return ns[ln]
+        if base.is_a?(String)
+          ns = RdfNamespace.first(:conditions => [ 'namespace = ?', base ] )
+          if ns.nil?
+            ns = RdfNamespace.create(:namespace => base )
+          end
+        else
+          ns = base
+        end
+        return ns[uri]
       end
     end
   end
