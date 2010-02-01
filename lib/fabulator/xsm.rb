@@ -7,3 +7,12 @@ require 'fabulator/xsm/path_expr'
 require 'fabulator/xsm/step'
 require 'fabulator/xsm/unary_expr'
 require 'fabulator/xsm/union_expr'
+
+require 'fabulator/xsm/for_expr'
+require 'fabulator/xsm/function'
+require 'fabulator/xsm/if_expr'
+require 'fabulator/xsm/path_expr'
+require 'fabulator/xsm/predicates'
+require 'fabulator/xsm/step'
+
+require 'fabulator/xsm/statement_list'

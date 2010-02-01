@@ -2,28 +2,42 @@ module Fabulator
   FAB_NS='http://dh.tamu.edu/ns/fabulator/1.0#'
   RDFS_NS = 'http://www.w3.org/2000/01/rdf-schema#'
   RDF_NS = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
-  class StateMachine
-    attr_accessor :states, :missing_params, :errors
+  RDFA_NS = 'http://dh.tamu.edu/ns/fabulator/rdf/1.0#'
+  class StateChangeException < Exception
+  end
 
-    def initialize(xml,logger = nil)
+  class StateMachine
+    attr_accessor :states, :missing_params, :errors, :namespaces, :updated_at
+
+    def initialize(xml)
       # /statemachine/states
       @states = { }
-      @actions = [ ]
+      self.namespaces = { }
       @default_model = xml.root.attributes.get_attribute_ns(FAB_NS,'rdf-model').value rescue nil
+      @actions = BasicActions.compile_actions(xml.root, @default_model)
+      Rails.logger.info("Actions: #{@actions}")
       xml.root.each_element do |child|
         next unless child.namespaces.namespace.href == FAB_NS
         case child.name
           when 'view':
             cs = State.new(child, @default_model)
             @states[cs.name] = cs
-          when 'rdf-query':
-            @actions << Query.new(child, @default_model)
-          when 'rdf-assert':
-            @actions << Assert.new(child, @default_model)
-          when 'rdf-deny':
-            @actions << Deny.new(child, @default_model)
         end
       end
+
+      xml.root.namespaces.each do |ns|
+        self.namespaces[ns.prefix] = ns.href
+      end
+      begin
+        self.namespaces[''] = xml.root.namespaces.default.href
+      rescue
+      end
+      Rails.logger.info("Namespaces: #{YAML::dump(self.namespaces)}")
+    end
+
+    def namespaces 
+      Rails.logger.info("Returning namespaces: #{@namespaces}")
+      @namespaces
     end
 
     def init_context(c)
@@ -32,10 +46,14 @@ module Fabulator
         @context = Fabulator::Context.new
       end
       @context.data = c
-      @actions.each do |q|
-        if !q.run(@context)
-          return
+      Rails.logger.info("Init_Context(#{c})")
+      begin
+        @actions.each do |q|
+          Rails.logger.info("Running #{q}")
+          q.run(c)
         end
+      rescue Fabulator::StateChangeException => e
+        @context.state = e
       end
     end
 
@@ -66,17 +84,40 @@ module Fabulator
         best_transition = current_state.select_transition(c,params)
         t = best_transition[:transition]
         @missing_params = best_transition[:missing]
-        @errors = best_transition[:errors]
+        @errors = best_transition[:messages]
         if @missing_params.empty? && @errors.empty?
           c.state = t.state
           # merge valid and context
-          c.merge!(best_transition[:valid])
+          Rails.logger.info("Best transition: #{YAML::dump(best_transition)}")
+          best_transition[:valid].each do |item|
+            p = item.path.gsub(/^[^:]+::/, '').split('/') - [ '' ]
+            Rails.logger.info("Adding #{item.path} at /#{p.join('/')}")
+            n = c.data.traverse_path(p, true).first
+            n.prune
+            n.copy(item)
+            #c.data.traverse_path(p, true).copy(item)
+          end
+          Rails.logger.info("Resulting data: #{YAML::dump(c.data)}")
+          #c.merge!(best_transition[:valid])
           # run_post of state we're leaving
-          current_state.run_post(c)
-          t.run(c)
-          # run_pre for the sate we're going to
-          new_state = @states[c.state]
-          new_state.run_pre(c) if !new_state.nil?
+          begin
+            current_state.run_post(c.data)
+            t.run(c.data)
+            # run_pre for the sate we're going to
+            new_state = @states[c.state]
+            new_state.run_pre(c.data) if !new_state.nil?
+          rescue Fabulator::StateChangeException => e # catch state change
+            new_state = @states[e]
+            begin
+              if !new_state.nil?
+                c.state = new_state.name
+                new_state.run_pre(c.data)
+              end
+            rescue Fabulator::StateChangeException => e
+              new_state = @states[e] 
+              retry
+            end
+          end
         end
       end
     end

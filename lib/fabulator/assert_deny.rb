@@ -1,4 +1,5 @@
 module Fabulator
+  module BasicActions
   class AssertDeny
     attr_accessor :state
 
@@ -43,27 +44,30 @@ module Fabulator
         #{s[:joins]}
         WHERE #{RdfModel.sanitize_where(conditions)}
         LIMIT 1
-      })
+      }, rdf_model.namespace, s[:sql_to_ctx])
     end
   end
 
   class Assert < AssertDeny
     def run(context)
       @sql.each do |s|
-        return true if self.count(s) > 0
+        return [ ] if self.count(s) > 0
       end
-      context.state = self.state
-      return false
+      raise Fabulator::StateChangeException, self.state, caller
+      #context.state = self.state
+      #return false
     end
   end
 
   class Deny < AssertDeny
     def run(context)
       @sql.each do |s|
-        return true if self.count(s) == 0
+        return [] if self.count(s) == 0
       end
-      context.state = self.state
-      return false
+      raise Fabulator::StateChangeException, self.state, caller
+      #context.state = self.state
+      #return false
     end
+  end
   end
 end

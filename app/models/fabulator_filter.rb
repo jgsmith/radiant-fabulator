@@ -12,9 +12,9 @@ class FabulatorFilter < ActiveRecord::Base
   end
 
   # handles running the constraint
-  def run_filter(context)
+  def run(context)
     f = (YAML::Load(self.compiled_def) rescue nil)
-    return [] if f.nil?
-    return f.run(context)
+    context.value = f.nil? ? nil : f.run(context)
+    context.value = context.value.first if context.value.is_a?(Array) && context.value.size < 2
   end
 end

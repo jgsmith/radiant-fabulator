@@ -6,9 +6,9 @@ module Fabulator
         @right = right
       end
 
-      def run(context)
-        l = @left.run(context)
-        r = @right.run(context)
+      def run(context, autovivify = false)
+        l = @left.run(context, autovivify)
+        r = @right.run(context, autovivify)
 
         l = [ l ] unless l.is_a?(Array)
         r = [ r ] unless l.is_a?(Array)

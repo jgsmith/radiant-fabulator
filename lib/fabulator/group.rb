@@ -1,10 +1,9 @@
 module Fabulator
-  #FAB_NS='http://dh.tamu.edu/ns/fabulator/1.0#'
-
   class Group
     attr_accessor :name, :params
     def initialize(xml)
-      @name = (xml.attributes.get_attribute_ns(FAB_NS, 'name').value rescue '')
+      parser = Fabulator::XSM::ExpressionParser.new
+      @select = parser.parse((xml.attributes.get_attribute_ns(FAB_NS, 'select').value rescue ''), xml)
 
       @params = { }
       @constraints = [ ]
@@ -15,9 +14,13 @@ module Fabulator
 
         case e.name
           when 'param':
-            v = Parameter.new(v)
-            @params[v.name] = v
-            @required_params << v.name if v.required?
+            v = Parameter.new(e)
+            @params << v
+            @required_params = @required_params + v.names if v.required?
+          when 'group':
+            v = Group.new(e)
+            @params << v
+            @required_params = @required_params + v.required_params.collect{ |n| (@name + '/' + n).gsub(/\/+/, '/') }
           when 'constraint':
             @constraints << Constraint.new(e)
           when 'filter':
@@ -26,23 +29,28 @@ module Fabulator
       end
     end
 
-    def param_names
-      @params.keys
+    def apply_filters(context)
+      roots = @select.run(context)
+      filtered = [ ]
+
+      roots.each do |root|
+        @params.each do |param|
+          p_ctx = param.get_context(context)
+          if !p_ctx.nil? && !p_ctx.empty?
+            p_ctx.each do |p|
+              @filters.each do |f|
+                filtered = filtered + f.apply_filter(p)
+              end
+            end
+          end
+          filtered = filtered + param.apply_filters(root)
+        end
+      end
+      filtered.uniq
     end
 
-    def required_params
-      @required_params
-    end
-
-    def apply_filters(params)
-      fields = self.param_names
-      @filters.each do |f|
-        f.apply_filter(params[@name],fields)
-      end
-
-      @params.keys.each do |p|
-        @params[p].apply_filters(params[@name])
-      end
+    def get_context(context)
+      @select.run(context)
     end
 
     def test_constraints(params)

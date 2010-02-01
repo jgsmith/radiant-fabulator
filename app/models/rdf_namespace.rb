@@ -13,4 +13,8 @@ class RdfNamespace < ActiveRecord::Base
     end
     r
   end
+
+  def to_s
+    namespace
+  end
 end

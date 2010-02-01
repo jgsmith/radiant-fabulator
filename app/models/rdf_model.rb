@@ -495,19 +495,26 @@ protected
     vars = self.vars_from_bgp(bgp)
     sql_args[:from] = vars[:froms].join(", ")
     vars = vars[:vars]
+    sql2ctx = { }
     # Build the select statement
     select = []
+    var_id = 1
     vars.each_pair do |v,i|
       next if v =~ /^[{_]/
-      if i[0] == :predicate
-        select << "#{i[1]}.predicate_id AS #{v}_id"
-      elsif i[0] == :object
-        select << "#{i[1]}.object_type AS #{v}_type, #{i[1]}.object_id AS #{v}_id"
-      else # i[0] == :subject
-        select << "#{i[1]}.subject_id AS #{v}_id"
+      if !sql2ctx[v]
+        sql2ctx[v] = "var_#{var_id}"
       end
+      if i[0] == :predicate
+        select << "#{i[1]}.predicate_id AS #{sql2ctx[v]}_id"
+      elsif i[0] == :object
+        select << "#{i[1]}.object_type AS #{sql2ctx[v]}_type, #{i[1]}.object_id AS #{sql2ctx[v]}_id"
+      else # i[0] == :subject
+        select << "#{i[1]}.subject_id AS #{sql2ctx[v]}_id"
+      end
+      var_id = var_id + 1
     end
     sql_args[:select] = select.join(", ")
+    sql_args[:sql_to_ctx] = sql2ctx.invert
 
     where = [ ]
     where_params = [ ]

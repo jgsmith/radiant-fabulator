@@ -5,10 +5,10 @@ module Fabulator
         @exprs = es
       end
 
-      def run(context)
+      def run(context, autovivify = false)
         u = [ ]
         @exprs.each do |e|
-          u = u + e.run(context)
+          u = u + e.run(context, autovivify)
         end
         return u.uniq
       end

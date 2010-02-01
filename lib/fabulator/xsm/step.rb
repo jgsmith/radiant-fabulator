@@ -6,19 +6,28 @@ module Fabulator
         @node_test = n
       end
 
-      def run(context)
+      def run(context, autovivify = false)
         c = context
+        Rails.logger.info("Step #{context} : #{@node_test}")
         if !@axis.nil? && @axis != '' && context.roots.has_key?(@axis) &&
             @axis != context.axis
           c = context.roots[@axis]
         end
-        Rails.logger.info("Looking for #{@node_test} under #{c.path}")
-        if @node_test == '*'
+        if @node_test.is_a?(String)
+          n = @node_test
+        else
+          n = (@node_test.run(context).last.value rescue nil)
+        end 
+        return [ ] if n.nil?
+        if n == '*'
           possible = c.children
         else
-          possible = c.children.select{ |cc| cc.name == @node_test }
+          possible = c.children.select{ |cc| cc.name == n }
+          if possible.empty? && autovivify
+            Rails.logger.info("Autovivifying #{n}")
+            possible = c.traverse_path([ n ], true)
+          end
         end
-        Rails.logger.info("Found #{possible.size} children")
         return possible
       end
 

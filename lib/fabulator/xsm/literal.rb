@@ -5,7 +5,7 @@ module Fabulator
         @lit = e
       end
 
-      def run(context)
+      def run(context, autovivify = false)
         return [ @lit ]
       end
     end

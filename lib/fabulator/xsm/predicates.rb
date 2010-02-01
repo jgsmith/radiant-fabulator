@@ -6,11 +6,11 @@ module Fabulator
         @predicates = p
       end
 
-      def run(context)
+      def run(context, autovivify = false)
         # we want to run through all of the predicates and return true if
         # they all return true
         result = [ ]
-        possible = @expr.run(context)
+        possible = @expr.run(context, autovivify)
         Rails.logger.info("Predicates found #{possible.size} items")
         return possible if @predicates.nil? || @predicates.empty?
         possible.each do |c|

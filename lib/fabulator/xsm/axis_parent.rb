@@ -1,7 +1,7 @@
 module Fabulator
   module XSM
     class AxisParent
-      def run(context)
+      def run(context, autovivify = false)
         if context.is_a?(Array)
           context.collect { |c| c.parent }.uniq
         else

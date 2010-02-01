@@ -15,16 +15,10 @@ module Fabulator
         case e.name
           when 'goes-to':
             @transitions << Transition.new(e, @rdf_model)
-          when 'rdf-assert':
-            @pre_actions << Assert.new(e, @rdf_model)
-          when 'rdf-deny':
-            @pre_actions << Deny.new(e, @rdf_model)
-          when 'rdf-assertion':
-            @post_actions << Assertion.new(e, @rdf_model)
-          when 'rdf-denial':
-            @post_actions << Denial.new(e, @rdf_model)
-          when 'rdf-query':
-            @pre_actions << Query.new(e, @rdf_model)
+          when 'before':
+            @pre_actions = BasicActions.compile_actions(e, @rdf_model)
+          when 'after':
+            @post_actions = BasicActions.compile_actions(e, @rdf_model)
         end
       end
     end
@@ -35,10 +29,11 @@ module Fabulator
 
     def select_transition(context,params)
       # we need hypthetical variables here :-/
+      Rails.logger.info("select_transition with #{YAML::dump(params)}")
       best_match = nil
       @transitions.each do |t|
         res = t.validate_params(context,params)
-        if res[:missing].empty? && res[:errors].empty? && res[:unknown].empty? && res[:invalid].empty?
+        if res[:missing].empty? && res[:messages].empty? && res[:unknown].empty? && res[:invalid].empty?
           res[:transition] = t
           return res
         end
@@ -53,21 +48,17 @@ module Fabulator
     def run_pre(context)
       # do queries, denials, assertions in the order given
       @pre_actions.each do |action|
-        if !action.run(context)
-          return false
-        end
+        action.run(context)
       end
-      return true
+      return []
     end
 
     def run_post(context)
       # do queries, denials, assertions in the order given
       @post_actions.each do |action|
-        if !action.run(context)
-          return false
-        end
+        action.run(context)
       end
-      return true
+      return []
     end
   end
 end

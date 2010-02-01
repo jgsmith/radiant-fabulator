@@ -4,17 +4,36 @@ module Fabulator
       def initialize(pe, predicates, segment)
         @primary_expr = pe
         @predicates = predicates
-        @segment = segment
+        @segment = segment.is_a?(Array) ? segment : [ segment ]
       end
 
-      def run(context)
-        if @primary_expr.nil? && !@segment.nil?
+      def run(context, autovivify = false)
+        Rails.logger.info("primary expr: [#{@primary_expr}]")
+        Rails.logger.info("segment: [#{@segment}]")
+    
+        if @primary_expr.nil?
           possible = [ context ]
         else
-          possible = @primary_expr.run(context).uniq
+          begin
+            possible = @primary_expr.run(context,autovivify).uniq
+            Rails.logger.info("Ran primary expr")
+          rescue
+            Rails.logger.info("Setting possible to #{context}")
+            possible = [ context ]
+          end
         end
+        #if !@primary_expr
+        #  possible = [ context ]
+        #else
+        #  Rails.logger.info("Running primary expr #{@primary_expr}")
+        #  possible = @primary_expr.run(context, autovivify).uniq
+        #end
+
+        Rails.logger.info("possible: [#{possible}]")
 
         final = [ ]
+
+        @segment = [ @segment ] unless @segment.is_a?(Array)
 
         possible.each do |e|
           next if e.nil?
@@ -26,9 +45,15 @@ module Fabulator
             end
           end
           next if not_pass
-          final = final + e.traverse_path(@segment)
+          pos = [ e ]
+          @segment.each do |s|
+            pos = pos.collect{ |p| s.run(p, autovivify) }.flatten
+          end
+            
+          final = final + pos
         end
-        return final.uniq
+        
+        return final
       end
     end
   end

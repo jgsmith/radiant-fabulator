@@ -5,8 +5,8 @@ module Fabulator
         @expr = e
       end
 
-      def run(context)
-        l = @expr.run(context)
+      def run(context, autovivify = false)
+        l = @expr.run(context, autovivify)
 
         l = [ l ] unless l.is_a?(Array)
 

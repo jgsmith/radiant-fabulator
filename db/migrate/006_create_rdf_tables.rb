@@ -30,9 +30,13 @@ class CreateRdfTables < ActiveRecord::Migration
 
     create_table :rdf_types do |t|
       t.string :name, :null => false
+      #t.references :rdf_resource, :null => false
+      # internal type is used for special handling - null for normal handling
+      t.integer    :internal_type
     end
 
     add_index :rdf_types, :name, :unique => true
+    #add_index :rdf_types, :rdf_resource, :unique => true
 
     create_table :rdf_languages do |t|
       t.string :name, :null => false

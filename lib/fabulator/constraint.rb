@@ -6,14 +6,18 @@ module Fabulator
     def initialize(xml)
       @constraints = [ ]
       @values = [ ]
+      @params = [ ]
       @attributes = { }
-      @inverted = (xml.attributes.get_attribute_ns(FAB_NS, 'sense').value.downcase rescue 'false')
+      @inverted = (xml.attributes.get_attribute_ns(FAB_NS, 'invert').value.downcase rescue 'false')
       @inverted = (@inverted == 'true' || @inverted == 'yes') ? true : false
+
+      parser = Fabulator::XSM::ExpressionParser.new
+
       if xml.name == 'value'
         @c_type = 'any'
         @values << xml.content
       else
-        @c_type = xml.attributes.get_attribute_ns(FAB_NS, 'type').value
+        @c_type = xml.attributes.get_attribute_ns(FAB_NS, 'name').value
 
         xml.each_attr do |attr|
           next unless attr.ns.href == FAB_NS
@@ -23,16 +27,32 @@ module Fabulator
         xml.each_element do |e|
           next unless e.namespaces.namespace.href == FAB_NS
           case e.name
+            when 'param':
+              pname = (e.get_attribute_ns(FAB_NS, 'name').value rescue nil)
+              if !pname.nil?
+                v = (e.get_attribute_ns(FAB_NS, 'value').value rescue nil)
+                if v.nil?
+                  v = (e.get_attribute_ns(FAB_NS, 'select').value rescue nil)
+                  if !v.nil?
+                    v = parser.parse(v, xml)
+                  end
+                end
+              end
+              @params[pname] = v unless pname.nil? || v.nil?
             when 'constraint':
               @constraints << Constraint.new(e)
             when 'value':
-              @values << e.content
+              v = (e.get_attribute_ns(FAB_NS, 'select').value rescue nil)
+              if v.nil?
+                v = e.content
+              end
+              @values << v unless v.nil?
           end
         end
       end
     end
 
-    def test_constraint(params, fields)
+    def test_constraint(context, params, fields)
       # do special ones first
       @sense = !@inverted
       case @c_type
@@ -50,28 +70,38 @@ module Fabulator
             return @sense
           else
             fields.each do |f|
+              calc_values = [ ]
+              @values.each do |v|
+                if v.is_a?(String)
+                  calc_values << v
+                else
+                  calc_values = calc_values + v.run(context)
+                end
+              end
               return !@sense unless @values.include?(params[f])
             end
             return @sense
           end
         when 'range':
+          fl = (@params['floor'].run(context) rescue nil)
+          ce = (@params['ceiling'].run(context) rescue nil)
           if @requires == 'all'
             fields.each do |f|
-              return !@sense if @attributes['floor'] > params[f] || 
-                                @attributes['ceil'] < params[f]
+              return !@sense if !fl.nil? && fl > params[f] || 
+                                !ce.nil? && ce < params[f]
             end
             return @sense
           else
             fields.each do |f|
-              return @sense if @attributes['floor'] < params[f] || 
-                               @attributes['ceil'] > params[f]
+              return @sense if !fl.nil? && fl < params[f] || 
+                               !ce.nil? && ce > params[f]
             end
             return !@sense
           end
         else
           c = FabulatorConstraint.find_by_name(@c_type) rescue nil
           return @sense if c.nil?
-          return @sense if c.run_constraint(params, fields)
+          return @sense if c.run_constraint(context)
           return !@sense
       end
     end

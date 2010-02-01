@@ -1,4 +1,5 @@
 module Fabulator
+  module RdfActions
   class Assertion
     attr_accessor :as
 
@@ -6,7 +7,7 @@ module Fabulator
       @model = xml.attributes.get_attribute_ns(FAB_NS, 'rdf-model').value rescue def_model
       # f:select ...
       xsm_exp_parser = Fabulator::XSM::ExpressionParser.new
-      @from  = xsm_exp_parser.parse((xml.attributes.get_attribute_ns(FAB_NS, 'select').value rescue '/'))
+      @from  = xsm_exp_parser.parse((xml.attributes.get_attribute_ns(FAB_NS, 'select').value rescue '/'), xml)
       @mode = (xml.attributes.get_attributes_ns(FAB_NS, 'mode').value rescue 'overwrite')
       @arcs = [ ]
       xml.each_element do |e|
@@ -18,8 +19,11 @@ module Fabulator
 
     def run(context)
       Rails.logger.info("Running an assertion")
-      return true if self.rdf_model.nil?
-      data = @from.run(context.data)
+      return [] if self.rdf_model.nil?
+      
+      data = @from.run(context)
+      Rails.logger.info("Data: #{YAML::dump(data)}")
+      result = [ ]
       if data.is_a?(Array)
         data.each do |d|
           self.execute_arcs(d)
@@ -27,6 +31,7 @@ module Fabulator
       else
         self.execute_arcs(data)
       end
+      return [ ]
     end
 
     def rdf_model
@@ -65,12 +70,15 @@ module Fabulator
           end
         end
       end
-      return true
     end
 
     def add_triple2(s,p,o)
       Rails.logger.info("add_triple2(#{s}, #{o}, #{p})")
       Rails.logger.info("  mode: #{@mode}")
+      if s.nil? || p.nil? || o.nil?
+        Rails.logger.info(" Uh oh... something's nil that shouldn't be: <#{s}|#{p}|#{o}>")
+        return
+      end
       return if self.rdf_model.count_statements(s,p,o) > 0
       if @mode == 'overwrite' && !o.bnode?
         Rails.logger.info("Removing statements first")
@@ -87,7 +95,10 @@ module Fabulator
       if t0 & 16 && s =~ /^\{(.*)\}$/
         t0 = t0 - 16
 Rails.logger.info("Data: #{YAML::dump(data)}")
-        s = data.eval_expression($1).first.value
+Rails.logger.info("Running expression: [#{$1}]")
+        s = data.eval_expression($1)
+        Rails.logger.info("Found: #{YAML::dump(s)}")
+        s = (s.first.value rescue nil)
       end
       if t0 & 32 && t[1] =~ /^\{(.*)\}$/
         t0 = t0 - 32
@@ -163,6 +174,7 @@ Rails.logger.info("Data: #{YAML::dump(data)}")
         when 4:
           # object is variable
           if t[2].is_a?(Array)
+            Rails.logger.info("4: <#{s}|#{p}|#{o}> t:[#{t.join("|")}]")
             self.add_triple2(
               RdfResource.from_uri(s, self.rdf_model.rdf_namespace),
               RdfResource.from_uri(p, self.rdf_model.rdf_namespace),
@@ -276,5 +288,6 @@ Rails.logger.info("Data: #{YAML::dump(data)}")
         return RdfResource.from_uri(r, self.rdf_model.rdf_namespace)
       end
     end
+  end
   end
 end

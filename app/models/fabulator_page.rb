@@ -7,8 +7,10 @@ class FabulatorPage < Page
   # need a reasonable name for the XML part
   XML_PART_NAME = 'extended'
 
+  #before_save :compile_xsm
+  before_save :compile_xsm
   after_save :set_defaults
-  attr_accessor :resource_ln
+  attr_accessor :resource_ln, :c_state_machine
 
   # create tags to access filtered data in page display
   # might also create tags for form fields, etc., so it's easy to
@@ -50,7 +52,12 @@ class FabulatorPage < Page
   end
 
   def state_machine
-    @state_machine ||= YAML::load(self.compiled_xml)
+    self.c_state_machine = YAML::load(self.compiled_xml) unless self.c_state_machine
+    if !self.c_state_machine || self.c_state_machine.updated_at.nil? ||
+            self.c_state_machine.updated_at < self.updated_at
+      self.c_state_machine = self.compile_xsm
+    end
+    self.c_state_machine
   end
 
   def fabulator_context
@@ -58,18 +65,18 @@ class FabulatorPage < Page
       @roots = { }
     end
 
-    if @roots['locals'].nil?
-      @roots['locals'] = Fabulator::XSM::Context.new('locals', @roots, nil, [])
-      @roots['locals'].traverse_path(['resource'], true).first.value = self.resource_ln if self.resource_ln
-      self.state_machine.init_context(@roots['locals'])
+    if @roots['data'].nil?
+      @roots['data'] = Fabulator::XSM::Context.new('data', @roots, nil, [])
+      @roots['data'].traverse_path(['resource'], true).first.value = self.resource_ln if self.resource_ln
+      self.state_machine.init_context(@roots['data'])
     end
-    @roots['locals']
+    @roots['data']
   end
 
   def fabulator_context=(c)
     fc = self.fabulator_context
     @roots = { } if @roots.nil?
-    @roots['locals'] = c
+    @roots['data'] = c
   end
 
   def headers
@@ -90,6 +97,8 @@ class FabulatorPage < Page
     if p.name != XML_PART_NAME
       super
     else
+      # check if page part was updated since page -- might need to recompile
+      
       sm = self.state_machine
       return '' if sm.nil?
 
@@ -110,7 +119,7 @@ class FabulatorPage < Page
 
       sm.context = context.context
       if sm.context.empty?
-        sm.init_context(self.fabulator_context)
+        sm.init_context(self.fabulator_context.data)
       end
       #sm.context.merge!(self.resource_ln, ['resource'] ) if self.resource_ln
       if request.method == :post
@@ -258,6 +267,13 @@ class FabulatorPage < Page
   end
 
   desc %{
+    Defines XML namespace prefix to URI mappings.
+  }
+  tag 'xmlns' do |tag|
+    tag.expand
+  end
+
+  desc %{
     Iterates through a set of data nodes.
 
     *Usage:*
@@ -269,7 +285,7 @@ class FabulatorPage < Page
     c = get_fabulator_context(tag)
     Rails.logger.info("context: #{YAML::dump(c)}")
     Rails.logger.info("for-each: #{selection} from #{c}")
-    items = c.nil? ? [] : c.eval_expression(selection)
+    items = c.nil? ? [] : c.eval_expression(selection, get_fabulator_ns(tag))
     res = ''
     Rails.logger.info("Found #{items.size} items for for-each")
     items.each do |i|
@@ -291,8 +307,8 @@ class FabulatorPage < Page
   tag 'value' do |tag|
     selection = tag.attr['select']
     c = get_fabulator_context(tag)
-    items = c.nil? ? [] : c.eval_expression(selection)
-    items.collect{|i| i.value }.join('')
+    items = c.nil? ? [] : c.eval_expression(selection, get_fabulator_ns(tag))
+    items.collect{|i| i.to_s }.join('')
   end
 
   desc %{
@@ -311,7 +327,7 @@ class FabulatorPage < Page
     return '' unless tag.locals.chosen
     selection = tag.attr['test']
     c = get_fabulator_context(tag)
-    items = c.nil? ? [] : c.eval_expression(selection)
+    items = c.nil? ? [] : c.eval_expression(selection, get_fabulator_ns(tag))
     if items.is_a?(Array)
       if items.empty?
         return ''
@@ -334,8 +350,58 @@ class FabulatorPage < Page
     tag.expand
   end
 
+#  def compile_xsm
+#    xml_part = (part(XML_PART_NAME).content rescue '')
+#    if xml_part.nil? || xml_part == ''
+#      @compiled_xml = YAML::dump(nil)
+#      return
+#    end
+#
+#    doc = LibXML::XML::Document.string xml_part
+#    # apply any XSLT here
+#    # compile
+#    sm = Fabulator::StateMachine.new(doc)
+#    #Rails.logger.info(YAML::dump(sm))
+#
+#    @compiled_xml = YAML::dump(sm)
+#  end
+
+  def compile_xsm
+    xml_part = self.part(XML_PART_NAME)
+    return nil if xml_part.nil?
+    xml_part = xml_part.content
+    if xml_part.nil? || xml_part == ''
+      self[:compiled_xml] = YAML::dump(nil)
+      sm = nil
+    else
+      doc = LibXML::XML::Document.string xml_part
+      # apply any XSLT here
+      # compile
+      sm = Fabulator::StateMachine.new(doc)
+      #Rails.logger.info(YAML::dump(sm))
+      sm.updated_at = self.updated_at
+
+      self[:compiled_xml] = YAML::dump(sm)
+    end
+#    self.save
+    sm
+  end
+
 
 private
+
+  def get_fabulator_ns(tag)
+    c = tag.locals.page
+    if c.nil?
+      c = tag.globals.page
+    end
+    Rails.logger.info("page: #{c}")
+    Rails.logger.info("state machine: #{c.state_machine}")
+    Rails.logger.info("namespaces: #{c.state_machine.namespaces}")
+    ret = (c.state_machine.namespaces rescue { })
+    Rails.logger.info("get_fabulator_ns: [#{ret}]")
+    ret
+  end
 
   def get_fabulator_context(tag)
     c = tag.locals.fabulator_context
@@ -351,37 +417,24 @@ private
     return c
   end
 
+
   def set_defaults
     # create a part for each state in the document
     # 'body' is a description/special
     # 'sidebar' is reserved
 
-    return if @in_set_defaults
-    @in_set_defaults = true
-
     # compile statemachine into a set of Ruby objects and save
-    xml_part = (part(XML_PART_NAME).content rescue '')
-    if xml_part.nil? || xml_part == ''
-      self.update_attribute(:compiled_xml, YAML::dump(nil))
-      return
-    end
-
-    doc = LibXML::XML::Document.string part(XML_PART_NAME).content
-    # apply any XSLT here
-    # compile
-    sm = Fabulator::StateMachine.new(doc, logger)
-    logger.info(YAML::dump(sm))
-
-    self.update_attribute(:compiled_xml, YAML::dump(sm))
-
     # not the most efficient, but we don't usually have hundreds of states
+    sm = self.state_machine
+    Rails.logger.info("SM: #{YAML::dump(sm)}")
+    return if sm.nil?
+    Rails.logger.info("Ensuring the right parts are present")
+
     sm.state_names.sort.each do |part_name|
       parts.create(:name => part_name, :content => %{
         <h1>View for State #{part_name}</h1>
       }) unless parts.any?{ |p| p.name == part_name }
     end
-
-    @in_set_defaults = false
   end
 
 end

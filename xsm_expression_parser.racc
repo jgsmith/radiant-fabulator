@@ -9,7 +9,7 @@ class Fabulator::XSM::ExpressionParser
 
 rule
   statements: statement { result = Fabulator::XSM::StatementList.new; result.add_statement(val[0]) }
-    | statements ';' statement { result = val[0]; result.add_statement(val[1]) }
+    | statements req_sp statement { result = val[0]; result.add_statement(val[2]) }
 
   statement: expr
     | let_expr
@@ -20,58 +20,65 @@ rule
     | for_expr
     | quant_expr
 
-  let_expr: LET DOLLAR_QNAME ':=' expr { result = Fabulator::XSM::LetExpr(val[1], val[3]) }
+  sp:
+    | req_sp
+
+  req_sp: SP
+    | NL
+
+  let_expr: LET req_sp DOLLAR_QNAME sp ':=' sp expr { result = Fabulator::XSM::LetExpr(val[2], val[6]) }
   
 
-  if_expr: IF '(' expr ')' THEN expr ELSE expr { result = Fabulator::XSM::IfExpr.new(val[2], val[5], val[7]) }
+  if_expr: IF sp '(' sp expr sp ')' sp THEN sp expr sp ELSE sp expr { result = Fabulator::XSM::IfExpr.new(val[4], val[10], val[14]) }
+    | IF sp '(' sp expr sp ')' sp THEN sp expr { result = Fabulator::XSM::IfExpr.new(val[4], val[10], nil) }
 
-  for_expr: FOR for_vars RETURN expr { result = Fabulator::XSM::ForExpr.new(val[1], val[3]) }
+  for_expr: FOR req_sp for_vars req_sp RETURN req_sp expr { result = Fabulator::XSM::ForExpr.new(val[2], val[6]) }
 
   for_vars: for_var { result = [ val[0] ] }
-    | for_vars COMMA for_var { result = val[0] + [ val[2] ] }
+    | for_vars sp COMMA sp for_var { result = val[0] + [ val[4] ] }
 
-  for_var: DOLLAR_QNAME IN expr { result = Fabulator::XSM::ForVar.new(val[0], val[2]) }
+  for_var: DOLLAR_QNAME req_sp IN req_sp expr { result = Fabulator::XSM::ForVar.new(val[0], val[4]) }
 
-  quant_expr: SOME for_vars SATISFIES expr { result = Fabulator::XSM::SomeExpr(val[1], val[3]) }
-    | EVERY for_vars SATISFIES expr { result = Fabulator::XSM::EveryExpr(val[1], val[3]) }
+  quant_expr: SOME req_sp for_vars req_sp SATISFIES req_sp expr { result = Fabulator::XSM::SomeExpr(val[2], val[6]) }
+    | EVERY req_sp for_vars req_sp SATISFIES req_sp expr { result = Fabulator::XSM::EveryExpr(val[2], val[6]) }
 
   or_expr: and_expr
-    | or_expr OR and_expr { result = Fabulator::XSM::OrExpr.new(val[0], val[2]) }
+    | or_expr req_sp OR req_sp and_expr { result = Fabulator::XSM::OrExpr.new(val[0], val[4]) }
 
   and_expr: equality_expr
-    | and_expr AND equality_expr { result = Fabulator::XSM::AndExpr.new(val[0], val[2]) }
-    | and_expr EXCEPT equality_expr { result = Fabulator::XSM::ExceptExpr.new(val[0], val[2]) }
+    | and_expr req_sp AND req_sp equality_expr { result = Fabulator::XSM::AndExpr.new(val[0], val[4]) }
+    | and_expr req_sp EXCEPT req_sp equality_expr { result = Fabulator::XSM::ExceptExpr.new(val[0], val[4]) }
 
   equality_expr: relational_expr
-    | equality_expr '=' relational_expr { result = Fabulator::XSM::EqExpr.new(val[0], val[2]) }
-    | equality_expr '!=' relational_expr { result = Fabulator::XSM::NeqExpr.new(val[0], val[2]) }
+    | equality_expr sp '=' sp relational_expr { result = Fabulator::XSM::EqExpr.new(val[0], val[4]) }
+    | equality_expr sp '!=' sp relational_expr { result = Fabulator::XSM::NeqExpr.new(val[0], val[4]) }
 
   relational_expr: additive_expr
-    | relational_expr '<' additive_expr { result = Fabulator::XSM::LtExpr.new(val[0], val[2]) }
-    | relational_expr '>' additive_expr { result = Fabulator::XSM::LtExpr.new(val[2], val[0]) }
-    | relational_expr '<=' additive_expr { result = Fabulator::XSM::LteExpr.new(val[0], val[2]) }
-    | relational_expr '>=' additive_expr { result = Fabulator::XSM::LteExpr.new(val[2], val[0]) }
+    | relational_expr sp '<' sp additive_expr { result = Fabulator::XSM::LtExpr.new(val[0], val[4]) }
+    | relational_expr sp '>' sp additive_expr { result = Fabulator::XSM::LtExpr.new(val[4], val[0]) }
+    | relational_expr sp '<=' sp additive_expr { result = Fabulator::XSM::LteExpr.new(val[0], val[4]) }
+    | relational_expr sp '>=' sp additive_expr { result = Fabulator::XSM::LteExpr.new(val[4], val[0]) }
 
-  range_expr: additive_expr '..' additive_expr { result = Fabulator::XSM::RangeExpr.new(val[0], val[2]) }
-    | additive_expr TO additive_expr { result = Fabulator::XSM::RangeExpr.new(val[0], val[2]) }
+  range_expr: additive_expr sp '..' sp additive_expr { result = Fabulator::XSM::RangeExpr.new(val[0], val[4]) }
+    | additive_expr req_sp TO req_sp additive_expr { result = Fabulator::XSM::RangeExpr.new(val[0], val[4]) }
 
   additive_expr: multiplicative_expr
-    | additive_expr '+' multiplicative_expr { result = Fabulator::XSM::AddExpr.new(val[0], val[2]) }
-    | additive_expr '-' multiplicative_expr { result = Fabulator::XSM::SubExpr.new(val[0], val[2]) }
+    | additive_expr sp '+' sp multiplicative_expr { result = Fabulator::XSM::AddExpr.new(val[0], val[4]) }
+    | additive_expr sp '-' sp multiplicative_expr { result = Fabulator::XSM::SubExpr.new(val[0], val[4]) }
 
   multiplicative_expr: unary_expr
-    | multiplicative_expr '*' unary_expr { result = Fabulator::XSM::MpyExpr.new(val[0], val[2]) }
-    | multiplicative_expr DIV unary_expr { result = Fabulator::XSM::DivExpr.new(val[0], val[2]) }
-    | multiplicative_expr MOD unary_expr { result = Fabulator::XSM::ModExpr.new(val[0], val[2]) }
+    | multiplicative_expr sp '*' sp unary_expr { result = Fabulator::XSM::MpyExpr.new(val[0], val[4]) }
+    | multiplicative_expr req_sp DIV req_sp unary_expr { result = Fabulator::XSM::DivExpr.new(val[0], val[4]) }
+    | multiplicative_expr req_sp MOD req_sp unary_expr { result = Fabulator::XSM::ModExpr.new(val[0], val[4]) }
 
   unary_expr: union_expr
-    | '-' unary_expr { result = Fabulator::XSM::NegExpr.new(val[1]) }
+    | '-' sp unary_expr { result = Fabulator::XSM::NegExpr.new(val[2]) }
 
   union_expr: path_expr
     | union_expr_x { result = Fabulator::XSM::UnionExpr.new(val[0]) }
 
-  union_expr_x: path_expr '|' path_expr { result = [ val[0], val[2] ] }
-    | union_expr_x '|' path_expr { result = val[0] + [ val[2] ] }
+  union_expr_x: path_expr sp '|' sp path_expr { result = [ val[0], val[4] ] }
+    | union_expr_x sp '|' sp path_expr { result = val[0] + [ val[4] ] }
 
   path_expr: location_path { result = Fabulator::XSM::PathExpr.new(nil, [], val[0]) }
     | primary_expr predicates segment { result = Fabulator::XSM::PathExpr.new(val[0], val[1], val[2]) }
@@ -97,9 +104,9 @@ rule
     | relative_location_path '//' step { result = val[0] + [ Fabulator::XSM::AxisDescendentOrSelf.new(val[2]) ] }
 
   step: axis node_test predicates { result = Fabulator::XSM::Predicates.new(Fabulator::XSM::Step.new(val[0], val[1]), val[2]) }
-    | axis '{' DOLLAR_QNAME '}' predicates { result = Fabulator::XSM::Predicates.new(Fabulator::XSM::Step.new(val[0], Fabulator::XSM::QName.new(val[2])), val[4]) }
-    | AXIS_METHOD '::' node_test predicates { result = Fabulator::XSM::Predicates.new(Fabulator::XSM::Function.new(val[2], []), val[3]) }
-    | AXIS_METHOD '::' FUNCTION_NAME '(' opt_args ')' predicates { result = Fabulator::XSM::Predicates.new(Fabulator::XSM::Function.new(val[2], val[4]), val[6]) }
+    #| axis '{' sp DOLLAR_QNAME sp '}' predicates { result = Fabulator::XSM::Predicates.new(Fabulator::XSM::Step.new(val[0], Fabulator::XSM::QName.new(val[3])), val[4]) }
+    | AXIS_METHOD '::' node_test predicates { result = Fabulator::XSM::Predicates.new(Fabulator::XSM::Function.new(@namespaces, val[2], []), val[3]) }
+    | AXIS_METHOD '::' FUNCTION_NAME '(' sp opt_args sp ')' predicates { result = Fabulator::XSM::Predicates.new(Fabulator::XSM::Function.new(@namespaces, val[2], val[5]), val[8]) }
     | '.' { result = Fabulator::XSM::CurrentContext.new }
     | '..' { result = Fabulator::XSM::AncestorContext.new }
 
@@ -108,23 +115,24 @@ rule
     | '@' { result = Fabulator::XSM::Axis.new('attribute')  }
 
   predicates: { result = [ ] }
-    | predicates '[' expr ']' { result = val[0] + [ val[2] ] }
+    | predicates '[' sp expr sp ']' { result = val[0] + [ val[3] ] }
 
     #| '<' expr '>'
   primary_expr:
     DOLLAR_QNAME { result = Fabulator::XSM::Var.new(val[0]) }
-    | '(' expr ')' { result = val[1] }
+    | '(' sp expr sp ')' { result = val[2] }
     | LITERAL { result = Fabulator::XSM::Literal.new(val[0]) }
     | NUMBER { result = Fabulator::XSM::Literal.new(val[0]) }
-    | FUNCTION_NAME '(' opt_args ')' { result = Fabulator::XSM::Function.new(val[0], val[2]) }
+    | FUNCTION_NAME '(' sp opt_args sp ')' { result = Fabulator::XSM::Function.new(@namespaces, val[0], val[3]) }
 
   opt_args: { result = [ ] }
     | args 
 
   args: expr { result = [ val[0] ] }
-    | args ',' expr { result = val[0] + [ val[2] ] }
+    | args sp ',' sp expr { result = val[0] + [ val[4] ] }
 
   node_test: QNAME
+    | '{' sp expr sp '}' { result = val[2] }
     | '*'
 
 end
@@ -132,10 +140,25 @@ end
 ---- inner 
   require 'fabulator/xsm'
 
-  def parse(t)
+  def parse(t, xml = { })
     @source = t
     @curpos = 0
-      
+    @namespaces = { }
+
+    if xml.nil?
+      @namespaces = { }
+    elsif xml.is_a?(Hash)
+      @namespaces = xml
+    else
+      xml.namespaces.each do |ns|
+        @namespaces[ns.prefix] = ns.href
+      end
+      begin
+        @namespaces[''] = xml.namespaces.default.href
+      rescue
+      end
+    end
+
     @yydebug = true
 
     @last_token = nil
@@ -171,8 +194,14 @@ end
 
   def next_token  
     @token = nil
+    white_space = 0
+    new_line = 0
     while @curpos < @source.length && @source[@curpos..@curpos] =~ /\s/ do
+      if @source[@curpos..@curpos] =~ /\n/
+        new_line = new_line + 1
+      end
       @curpos = @curpos + 1
+      white_space = white_space + 1
     end
 
     # skip comments delimited by (:  :)
@@ -193,10 +222,15 @@ end
         end
         @curpos = @curpos + 1
       end
+      white_space = white_space + 1
     end
 
     while @curpos < @source.length && @source[@curpos..@curpos] =~ /\s/ do
+      if @source[@curpos..@curpos] =~ /\n/
+        new_line = new_line + 1
+      end
       @curpos = @curpos + 1
+      white_space = white_space + 1
     end
         
     if @curpos >= @source.length
@@ -204,7 +238,13 @@ end
       return [ false, false ]
     end
 
-    if @last_token && ! @@preceding_tokens[@last_token[1]]
+    if new_line > 0
+      @token = [ :NL, new_line ]
+    elsif white_space > 0
+      @token = [ :SP, white_space ]
+    end
+
+    if @token.nil? && @last_token && ! @@preceding_tokens[@last_token[1]]
       if @source[@curpos..@curpos] == '*'
         @token = [ '*', '*' ]
       else
@@ -237,9 +277,9 @@ end
               @token = [ :MOD, 'mod' ]
             when 'div':
               @token = [ :DIV, 'div' ]
-            when '*doh*':
-              # do nothing
-              @token = nil
+            #when '*doh*':
+            #  # do nothing
+            #  @token = nil
             else
               @token = [ :QNAME, ncname ]
           end

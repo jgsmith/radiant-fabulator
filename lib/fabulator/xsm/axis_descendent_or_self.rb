@@ -5,7 +5,7 @@ module Fabulator
         @step = step
       end
 
-      def run(context)
+      def run(context, autovivify = false)
         if context.is_a?(Array)
           stack = context
         else
@@ -17,7 +17,7 @@ module Fabulator
 
           stack = stack + c.children
 
-          possible = possible + c.run(@step)
+          possible = possible + c.run(@step, autovivify)
         end
         return possible.uniq
       end

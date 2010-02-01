@@ -11,6 +11,8 @@ class FabulatorExtension < Radiant::Extension
   description "Applications as documents"
   url "http://github.com/jgsmith/radiant-fabulator"
 
+  XML_PART_NAME = 'extended'
+
  define_routes do |map|
     map.namespace 'admin' do |admin|
       admin.namespace 'fabulator', :member => { :remove => :get } do |fab|
