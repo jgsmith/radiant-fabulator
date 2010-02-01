@@ -39,7 +39,7 @@ escue rdf_model)
 
       @rdf_model = (xml.attributes.get_attribute_ns(FAB_NS, 'rdf-model').value rescue rdf_model)
 
-      @actions = BasicActions.compile_actions(xml, @rdf_model)
+      @actions = ActionLib.compile_actions(xml, @rdf_model)
     end
 
     def run_test(context)

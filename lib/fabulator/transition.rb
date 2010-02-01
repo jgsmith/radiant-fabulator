@@ -15,7 +15,7 @@ module Fabulator
       @actions = [ ]
       @rdf_model = (xml.attributes.get_attribute_ns(FAB_NS, 'rdf-model').value rescue rdf_model)
 
-      @actions = BasicActions.compile_actions(xml, @rdf_model)
+      @actions = ActionLib.compile_actions(xml, @rdf_model)
       parser = Fabulator::XSM::ExpressionParser.new
 
       xml.each_element do |e|

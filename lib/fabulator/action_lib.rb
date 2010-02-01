@@ -15,6 +15,21 @@ module Fabulator
         end
       end
     end
+
+    def self.compile_actions(xml, rdf_model)
+      actions = [ ]
+      xml.each_element do |e|
+        ns = e.namespaces.namespace.href
+        Rails.logger.info("Compiling <#{ns}><#{e.name}>")
+        next unless Fabulator::ActionLib.namespaces.include?(ns)
+        actions << (Fabulator::ActionLib.namespaces[ns].compile_action(e, rdf_model) rescue nil)
+        Rails.logger.info("compile_actions: #{actions}")
+      end
+      Rails.logger.info("compile_actions: #{actions}")
+      actions = actions - [ nil ]
+      Rails.logger.info("compile_actions returning: #{actions}")
+      return actions
+    end
     
     def compile_action(e, r)
       send "action:#{e.name}", e, r

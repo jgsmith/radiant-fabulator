@@ -14,7 +14,7 @@ module Fabulator
       @states = { }
       self.namespaces = { }
       @default_model = xml.root.attributes.get_attribute_ns(FAB_NS,'rdf-model').value rescue nil
-      @actions = BasicActions.compile_actions(xml.root, @default_model)
+      @actions = ActionLib.compile_actions(xml.root, @default_model)
       Rails.logger.info("Actions: #{@actions}")
       xml.root.each_element do |child|
         next unless child.namespaces.namespace.href == FAB_NS

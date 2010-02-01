@@ -8,7 +8,7 @@ module Fabulator
       @select = (parser.parse(@select, xml) rescue nil)
       @sort = [ ]
 
-      @actions = BasicActions.compile_actions(xml, rdf_model)
+      @actions = ActionLib.compile_actions(xml, rdf_model)
 
       xml.each_element do |e|
         next unless e.namespaces.namespace.href == FAB_NS
@@ -54,7 +54,7 @@ module Fabulator
       @select = (xml.attributes.get_attribute_ns(FAB_NS, 'select').value rescue rdf_model)
       parser = Fabulator::XSM::ExpressionParser.new
       @select = (parser.parse(@select, xml) rescue nil)
-      @actions = BasicActions.compile_actions(xml, rdf_model)
+      @actions = ActionLib.compile_actions(xml, rdf_model)
     end
 
     def run(context)
@@ -76,7 +76,7 @@ module Fabulator
       parser = Fabulator::XSM::ExpressionParser.new
       @test = (parser.parse(@test, xml) rescue nil)
       @limit = (xml.attributes.get_attribute_ns(FAB_NS, 'limit').value rescue 1000)
-      @actions = BasicActions.compile_actions(xml, rdf_model)
+      @actions = ActionLib.compile_actions(xml, rdf_model)
     end
 
     def run(context)

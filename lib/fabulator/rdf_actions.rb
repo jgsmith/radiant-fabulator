@@ -4,7 +4,9 @@ require 'fabulator/rdf_actions/denial'
 require 'fabulator/rdf_actions/query'
 
 module Fabulator
-  class RdfActions
+  module RdfActions
+  class Lib
+ 
     include ActionLib
     register_namespace RDFA_NS
 
@@ -13,5 +15,6 @@ module Fabulator
     action 'rdf-assertion' , RdfActions::Assertion
     action 'rdf-denial'    , RdfActions::Denial
     action 'rdf-query'     , RdfActions::Query
+  end
   end
 end

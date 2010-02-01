@@ -1,5 +1,5 @@
 module Fabulator
-  module BasicActions
+  module RdfActions
   class AssertDeny
     attr_accessor :state
 

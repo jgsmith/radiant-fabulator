@@ -4,7 +4,8 @@ require 'fabulator/basic_actions/for_each'
 require 'fabulator/basic_actions/variables'
 
 module Fabulator
-  class BasicActions
+  module BasicActions
+  class Lib
     include ActionLib
     register_namespace FAB_NS
 
@@ -95,5 +96,6 @@ module Fabulator
       div = args[1].first.value
       args[0].collect{ |a| a.value.split(div) }
     end
+  end
   end
 end

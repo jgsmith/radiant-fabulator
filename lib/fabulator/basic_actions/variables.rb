@@ -23,7 +23,7 @@ module Fabulator
       Rails.logger.info("value path: [#{@name}]")
       @name = parser.parse(@name, xml)
       Rails.logger.info("value compiled path: #{YAML::dump(@name)}")
-      @actions = BasicActions.compile_actions(xml, rdf_model)
+      @actions = ActionLib.compile_actions(xml, rdf_model)
     end
 
     def run(context, autovivify = false)
@@ -71,7 +71,7 @@ module Fabulator
       parser= Fabulator::XSM::ExpressionParser
       @select = (parser.parse(@select, xml) rescue nil)
       @name = (xml.attributes.get_attribute_ns(FAB_NS, 'name').value rescue nil)
-      @actions = BasicActions.compile_actions(xml, rdf_model)
+      @actions = ActionLib.compile_actions(xml, rdf_model)
     end
 
     def run(context)

@@ -16,9 +16,9 @@ module Fabulator
           when 'goes-to':
             @transitions << Transition.new(e, @rdf_model)
           when 'before':
-            @pre_actions = BasicActions.compile_actions(e, @rdf_model)
+            @pre_actions = ActionLib.compile_actions(e, @rdf_model)
           when 'after':
-            @post_actions = BasicActions.compile_actions(e, @rdf_model)
+            @post_actions = ActionLib.compile_actions(e, @rdf_model)
         end
       end
     end
