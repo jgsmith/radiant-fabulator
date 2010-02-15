@@ -1,26 +1,26 @@
 module Fabulator
-  #FAB_NS='http://dh.tamu.edu/ns/fabulator/1.0#'
-
+  module Core
   class State
     attr_accessor :name, :transitions
 
-    def initialize(xml, rdf_model = nil)
+    def compile_xml(xml, c_attrs)
       @name = xml.attributes.get_attribute_ns(FAB_NS, 'name').value
-      @rdf_model = (xml.attributes.get_attribute_ns(FAB_NS, 'rdf-model').value rescue rdf_model)
       @transitions = [ ]
       @pre_actions = [ ]
       @post_actions = [ ]
+      attrs = ActionLib.collect_attributes(c_attrs, xml)
       xml.each_element do |e|
         next unless e.namespaces.namespace.href == FAB_NS
         case e.name
           when 'goes-to':
-            @transitions << Transition.new(e, @rdf_model)
+            @transitions << Transition.new.compile_xml(e, attrs)
           when 'before':
-            @pre_actions = ActionLib.compile_actions(e, @rdf_model)
+            @pre_actions = ActionLib.compile_actions(e, attrs)
           when 'after':
-            @post_actions = ActionLib.compile_actions(e, @rdf_model)
+            @post_actions = ActionLib.compile_actions(e, attrs)
         end
       end
+      self
     end
 
     def states
@@ -29,7 +29,7 @@ module Fabulator
 
     def select_transition(context,params)
       # we need hypthetical variables here :-/
-      Rails.logger.info("select_transition with #{YAML::dump(params)}")
+      #Rails.logger.info("select_transition with #{YAML::dump(params)}")
       best_match = nil
       @transitions.each do |t|
         res = t.validate_params(context,params)
@@ -60,5 +60,6 @@ module Fabulator
       end
       return []
     end
+  end
   end
 end

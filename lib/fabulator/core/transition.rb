@@ -1,8 +1,9 @@
 module Fabulator
+  module Core
   class Transition
     attr_accessor :state, :validations
 
-    def initialize(xml, rdf_model = nil)
+    def compile_xml(xml, c_attrs = { })
       # manage validations without Lua, if we can
       # only use Lua if we have to
       # model data as RDF?
@@ -10,18 +11,20 @@ module Fabulator
 
       @state = xml.attributes.get_attribute_ns(FAB_NS, 'view').value
 
+      attrs = ActionLib.collect_attributes(c_attrs, xml)
+
       @groups = { }
       @params = [ ]
       @actions = [ ]
-      @rdf_model = (xml.attributes.get_attribute_ns(FAB_NS, 'rdf-model').value rescue rdf_model)
 
-      @actions = ActionLib.compile_actions(xml, @rdf_model)
+      @actions = ActionLib.compile_actions(xml, attrs)
       parser = Fabulator::XSM::ExpressionParser.new
 
       xml.each_element do |e|
         next unless e.namespaces.namespace.href == FAB_NS
         case e.name
           when 'params':
+            p_attrs = ActionLib.collect_attributes(attrs, e)
             @select = (e.attributes.get_attribute_ns(FAB_NS, 'select').value rescue '')
             @select = parser.parse(@select, xml)
 
@@ -29,15 +32,16 @@ module Fabulator
               next unless ee.namespaces.namespace.href == FAB_NS
               case ee.name
                 when 'group':
-                  g = Group.new(ee)
+                  g = Group.new.compile_xml(ee, p_attrs)
                   @params << g
                 when 'param':
-                  p = Parameter.new(ee)
+                  p = Parameter.new.compile_xml(ee, p_attrs)
                   @params << p
               end
             end
         end
       end
+      self
     end
 
     def param_names
@@ -139,5 +143,6 @@ module Fabulator
       end
       return []
     end
+  end
   end
 end

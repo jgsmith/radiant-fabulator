@@ -16,9 +16,16 @@ module Fabulator
         l = l.collect { |i| i.value }.uniq - [ nil ]
         r = r.collect { |i| i.value }.uniq - [ nil ]
 
+        res = []
+
         l.each do |i|
           r.each do |j|
-            res << self.calculate(i,j)
+            res << Fabulator::XSM::Context.new(
+              context.axis,
+              context.roots,
+              self.calculate(i,j),
+              []
+            )
           end
         end
         return res

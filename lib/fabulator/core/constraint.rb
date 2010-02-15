@@ -1,15 +1,14 @@
 module Fabulator
-  #FAB_NS='http://dh.tamu.edu/ns/fabulator/1.0#'
-
+  module Core
   # admin interface allows managing of constraints and filters
   class Constraint
-    def initialize(xml)
+    def compile_xml(xml, c_attrs = { })
       @constraints = [ ]
       @values = [ ]
       @params = [ ]
       @attributes = { }
-      @inverted = (xml.attributes.get_attribute_ns(FAB_NS, 'invert').value.downcase rescue 'false')
-      @inverted = (@inverted == 'true' || @inverted == 'yes') ? true : false
+      attrs = ActionLib.collect_attributes(c_attrs, xml)
+      @inverted = ActionLib.get_local_attr(xml, FAB_NS, 'invert', { :default => 'false' })
 
       parser = Fabulator::XSM::ExpressionParser.new
 
@@ -17,11 +16,12 @@ module Fabulator
         @c_type = 'any'
         @values << xml.content
       else
-        @c_type = xml.attributes.get_attribute_ns(FAB_NS, 'name').value
+        #@c_type = xml.attributes.get_attribute_ns(FAB_NS, 'name').value
+        @c_type = ActionLib.get_local_attr(xml, FAB_NS, 'name')
 
         xml.each_attr do |attr|
           next unless attr.ns.href == FAB_NS
-          next if attr.name == 'type' || attr.name == 'sense'
+          next if attr.name == 'name' || attr.name == 'invert'
           @attributes[attr.name] = attr.value
         end
         xml.each_element do |e|
@@ -30,19 +30,26 @@ module Fabulator
             when 'param':
               pname = (e.get_attribute_ns(FAB_NS, 'name').value rescue nil)
               if !pname.nil?
-                v = (e.get_attribute_ns(FAB_NS, 'value').value rescue nil)
-                if v.nil?
-                  v = (e.get_attribute_ns(FAB_NS, 'select').value rescue nil)
-                  if !v.nil?
-                    v = parser.parse(v, xml)
-                  end
-                end
+                v = ActionLib.get_local_attr(e, FAB_NS, 'value', {
+                      :default => ActionLib.get_local_attr(
+                        e, FAB_NS, 'select', { :eval => true }
+                      )
+                    })
+                #v = (e.get_attribute_ns(FAB_NS, 'value').value rescue nil)
+                #if v.nil?
+                #  v = ActionLib.get_local_attr(e, FAB_NS, 'select', { :eval => true })
+                #  #v = (e.get_attribute_ns(FAB_NS, 'select').value rescue nil)
+                #  #if !v.nil?
+                #  #  v = parser.parse(v, xml)
+                #  #end
+                #end
               end
               @params[pname] = v unless pname.nil? || v.nil?
             when 'constraint':
-              @constraints << Constraint.new(e)
+              @constraints << Constraint.new.compile_xml(e, attrs)
             when 'value':
-              v = (e.get_attribute_ns(FAB_NS, 'select').value rescue nil)
+              v = ActionLib.get_local_attr(e, FAB_NS, 'select', { :eval => true })
+              #v = (e.get_attribute_ns(FAB_NS, 'select').value rescue nil)
               if v.nil?
                 v = e.content
               end
@@ -50,11 +57,14 @@ module Fabulator
           end
         end
       end
+      self
     end
 
     def test_constraint(context, params, fields)
       # do special ones first
-      @sense = !@inverted
+      inv = (@inverted.run.first.value rescue 'false')
+      inv = (inv == 'true' || inv == 'yes') ? true : false
+      @sense = !inv
       case @c_type
         when 'all':
           # we have enclosed constraints
@@ -105,5 +115,6 @@ module Fabulator
           return !@sense
       end
     end
+  end
   end
 end

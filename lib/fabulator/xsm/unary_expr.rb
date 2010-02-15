@@ -12,7 +12,12 @@ module Fabulator
 
         l = l.collect { |i| i.value }.uniq - [ nil ]
 
-        return @expr.collect{|e| self.calculate(e) }
+        return @expr.collect{|e|  res << Fabulator::XSM::Context.new(
+              context.axis,
+              context.roots,
+              self.calculate(e),
+              []
+            ) }
       end
     end
 

@@ -1,28 +1,33 @@
 module Fabulator
-  module RdfActions
+  module Rdf
+  module Actions
   class Assertion
     attr_accessor :as
 
-    def initialize(xml, def_model = nil)
-      @model = xml.attributes.get_attribute_ns(FAB_NS, 'rdf-model').value rescue def_model
-      # f:select ...
-      xsm_exp_parser = Fabulator::XSM::ExpressionParser.new
-      @from  = xsm_exp_parser.parse((xml.attributes.get_attribute_ns(FAB_NS, 'select').value rescue '/'), xml)
-      @mode = (xml.attributes.get_attributes_ns(FAB_NS, 'mode').value rescue 'overwrite')
+    def compile_xml(xml, c_attrs = { })
+      @model_x = ActionLib.get_attribute(RDFA_NS, 'model', c_attrs)
+      @from = ActionLib.get_local_attr(xml, FAB_NS, 'select', { :eval => true, :default => '/' })
+      @mode_x = ActionLib.get_local_attr(xml, FAB_NS, 'mode', { :default => 'overwrite' })
+
       @arcs = [ ]
       xml.each_element do |e|
+        # allow other types of queries -- but simple rdf templates for now
         if e.namespaces.namespace.href == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#' && e.name == 'RDF'
           @arcs << RdfModel.build_arcs(e)
         end
       end
+      self
     end
 
     def run(context)
       Rails.logger.info("Running an assertion")
+      return [] if @model_x.nil?
+      @model = @model_x.run(context).first.value
+      return [] if @model.nil?
       return [] if self.rdf_model.nil?
-      
       data = @from.run(context)
-      Rails.logger.info("Data: #{YAML::dump(data)}")
+      @mode = @mode_x.run(context).first.value
+      #Rails.logger.info("Data: #{YAML::dump(data)}")
       result = [ ]
       if data.is_a?(Array)
         data.each do |d|
@@ -35,14 +40,17 @@ module Fabulator
     end
 
     def rdf_model
-      @rdf_model ||= RdfModel.first(:conditions => [ 'name = ?', @model ])
+      if @rdf_model.nil?
+        return nil if @model.nil?
+        @rdf_model = RdfModel.first(:conditions => [ 'name = ?', @model ])
+      end
       @rdf_model
     end
 
   protected
 
     def execute_arcs(data)
-      Rails.logger.info("Running: #{YAML::dump(@arcs)}")
+      #Rails.logger.info("Running: #{YAML::dump(@arcs)}")
       @arcs.each do |arc_set|
         # we want to make sure all of the arcs are in the database
         # arcs have well-defined nodes (not blank nodes or <rdf:li/> predicates
@@ -73,15 +81,15 @@ module Fabulator
     end
 
     def add_triple2(s,p,o)
-      Rails.logger.info("add_triple2(#{s}, #{o}, #{p})")
-      Rails.logger.info("  mode: #{@mode}")
+      #Rails.logger.info("add_triple2(#{s}, #{o}, #{p})")
+      #Rails.logger.info("  mode: #{@mode}")
       if s.nil? || p.nil? || o.nil?
-        Rails.logger.info(" Uh oh... something's nil that shouldn't be: <#{s}|#{p}|#{o}>")
+        #Rails.logger.info(" Uh oh... something's nil that shouldn't be: <#{s}|#{p}|#{o}>")
         return
       end
       return if self.rdf_model.count_statements(s,p,o) > 0
       if @mode == 'overwrite' && !o.bnode?
-        Rails.logger.info("Removing statements first")
+        #Rails.logger.info("Removing statements first")
         self.rdf_model.find_statements(s,p,nil).each do |st|
           self.rdf_model.remove_statement(st.subject, st.predicate, st.object)
         end
@@ -90,14 +98,14 @@ module Fabulator
     end
 
     def add_triple(data,bnodes,s,t)
-      Rails.logger.info("Adding triple (#{s}, #{t[0]}, #{t[1]}, #{t[2]})")
+      #Rails.logger.info("Adding triple (#{s}, #{t[0]}, #{t[1]}, #{t[2]})")
       t0 = t[0]
       if t0 & 16 && s =~ /^\{(.*)\}$/
         t0 = t0 - 16
-Rails.logger.info("Data: #{YAML::dump(data)}")
-Rails.logger.info("Running expression: [#{$1}]")
+#Rails.logger.info("Data: #{YAML::dump(data)}")
+#Rails.logger.info("Running expression: [#{$1}]")
         s = data.eval_expression($1)
-        Rails.logger.info("Found: #{YAML::dump(s)}")
+        #Rails.logger.info("Found: #{YAML::dump(s)}")
         s = (s.first.value rescue nil)
       end
       if t0 & 32 && t[1] =~ /^\{(.*)\}$/
@@ -174,7 +182,7 @@ Rails.logger.info("Running expression: [#{$1}]")
         when 4:
           # object is variable
           if t[2].is_a?(Array)
-            Rails.logger.info("4: <#{s}|#{p}|#{o}> t:[#{t.join("|")}]")
+            #Rails.logger.info("4: <#{s}|#{p}|#{o}> t:[#{t.join("|")}]")
             self.add_triple2(
               RdfResource.from_uri(s, self.rdf_model.rdf_namespace),
               RdfResource.from_uri(p, self.rdf_model.rdf_namespace),
@@ -288,6 +296,7 @@ Rails.logger.info("Running expression: [#{$1}]")
         return RdfResource.from_uri(r, self.rdf_model.rdf_namespace)
       end
     end
+  end
   end
   end
 end

@@ -1,11 +1,12 @@
 module Fabulator
-  module RdfActions
+  module Rdf
+  module Actions
   class AssertDeny
     attr_accessor :state
 
-    def initialize(xml, def_model = nil)
-      @model = xml.attributes.get_attribute_ns(FAB_NS, 'rdf-model').value rescue def_model
-      @state = xml.attributes.get_attribute_ns(FAB_NS, 'go-to').value rescue nil
+    def compile_xml(xml, c_attrs = { })
+      @model_x = ActionLib.get_attribute(RDFA_NS, 'model', c_attrs)
+      @state = xml.attributes.get_attribute_ns(RDFA_NS, 'go-to').value rescue nil
       @sql = [ ]
       xml.each_element do |e|
         @sql << RdfModel.build_query(e)
@@ -17,10 +18,11 @@ module Fabulator
       #end
       #@sql[:type_ns] = fc.namespace
       #@sql[:type_ln] = fc.local_name
+      self
     end
 
-    def count(s)
-      rdf_model = RdfModel.first(:conditions => [ 'name = ?', @model ])
+    def count(s, context)
+      rdf_model = RdfModel.first(:conditions => [ 'name = ?', @model_x.run(context).first.value ])
       return 0 if rdf_model.nil?
 
       conditions = [ s[:simple_where] ]
@@ -51,7 +53,7 @@ module Fabulator
   class Assert < AssertDeny
     def run(context)
       @sql.each do |s|
-        return [ ] if self.count(s) > 0
+        return [ ] if self.count(s,context) > 0
       end
       raise Fabulator::StateChangeException, self.state, caller
       #context.state = self.state
@@ -62,12 +64,13 @@ module Fabulator
   class Deny < AssertDeny
     def run(context)
       @sql.each do |s|
-        return [] if self.count(s) == 0
+        return [] if self.count(s,context) == 0
       end
       raise Fabulator::StateChangeException, self.state, caller
       #context.state = self.state
       #return false
     end
+  end
   end
   end
 end

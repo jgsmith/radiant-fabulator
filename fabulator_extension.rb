@@ -6,6 +6,8 @@ require 'xml/libxml'
 require_dependency "#{File.expand_path(File.dirname(__FILE__))}/lib/fabulator" #/state_machine"
 require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"
 
+require 'fabulator'
+
 class FabulatorExtension < Radiant::Extension
   version "1.0"
   description "Applications as documents"
@@ -25,6 +27,8 @@ class FabulatorExtension < Radiant::Extension
 
   def activate
     FabulatorPage
+    Fabulator::XSM::ExpressionParser.new
+    Fabulator::XSM::Literal.new(nil)
 
     fab_tab = admin.nav_tab( :fabulator, "Fabulator" )
     fab_tab << admin.nav_item( :rdf_models, "RDF Models", "/admin/fabulator/rdf_models" )

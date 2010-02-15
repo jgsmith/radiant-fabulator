@@ -6,7 +6,9 @@ module Fabulator
       end
 
       def run(context, autovivify = false)
-        return [ @lit ]
+        return [
+          Fabulator::XSM::Context.new('data', context.roots, @lit, [])
+        ]
       end
     end
   end

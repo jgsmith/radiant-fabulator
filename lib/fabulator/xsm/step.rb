@@ -8,7 +8,7 @@ module Fabulator
 
       def run(context, autovivify = false)
         c = context
-        Rails.logger.info("Step #{context} : #{@node_test}")
+        #Rails.logger.info("Step #{context} : #{@node_test}")
         if !@axis.nil? && @axis != '' && context.roots.has_key?(@axis) &&
             @axis != context.axis
           c = context.roots[@axis]
@@ -24,7 +24,7 @@ module Fabulator
         else
           possible = c.children.select{ |cc| cc.name == n }
           if possible.empty? && autovivify
-            Rails.logger.info("Autovivifying #{n}")
+            #Rails.logger.info("Autovivifying #{n}")
             possible = c.traverse_path([ n ], true)
           end
         end

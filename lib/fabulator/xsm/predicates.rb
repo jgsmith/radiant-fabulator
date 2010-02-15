@@ -11,7 +11,7 @@ module Fabulator
         # they all return true
         result = [ ]
         possible = @expr.run(context, autovivify)
-        Rails.logger.info("Predicates found #{possible.size} items")
+        #Rails.logger.info("Predicates found #{possible.size} items")
         return possible if @predicates.nil? || @predicates.empty?
         possible.each do |c|
           @predicates.each do |p|

@@ -24,10 +24,13 @@ module Fabulator
       end
 
       def set_var(n,v)
-        return parent.set_var(n,v) if @parent && @parent != self
-        @e_ctx[:vars] ||= [ ]
-        @e_ctx[:vars][0] ||= { }
-        @e_ctx[:vars][0][n] = v
+        return @roots['data'].set_var(n,v) if @roots['data'] != self
+        #return parent.set_var(n,v) if @parent && @parent != self
+        if n =~ /$\$?(.*)$/
+          @e_ctx[:vars] ||= [ ]
+          @e_ctx[:vars][0] ||= { }
+          @e_ctx[:vars][0][$1] = v
+        end
       end
 
       def get_var(n)
@@ -101,7 +104,7 @@ module Fabulator
           new_rc = [ ]
           root_context.each do |c|
             if c.children.size == 0 && c.value.nil?
-              c.parent.prune(c)
+              c.parent.prune(c) if c.parent
             else
               new_rc << c
             end
@@ -115,11 +118,11 @@ module Fabulator
           root_context = root_context.first
         end
         #Rails.logger.info("Merge Path: #{root_context.path}")
-        Rails.logger.info("Merging into #{root_context.path rescue '*'}: #{YAML::dump(d)}")
+        #Rails.logger.info("Merging into #{root_context.path rescue '*'}: #{YAML::dump(d)}")
         if d.is_a?(Array)
           node_name = root_context.name
           root_context = root_context.parent
-          Rails.logger.info("Array context: #{root_context.path} / #{node_name}")
+          #Rails.logger.info("Array context: #{root_context.path} / #{node_name}")
           # get rid of empty children so we don't have problems later
           root_context.children.each do |c|
             if c.children.size == 0 && c.name == node_name && c.value.nil?
@@ -132,14 +135,14 @@ module Fabulator
           end
         elsif d.is_a?(Hash)
           d.each_pair do |k,v|
-            Rails.logger.info("Merging [#{k}]")
+            #Rails.logger.info("Merging [#{k}]")
             bits = k.split('.')
             c = root_context.traverse_path(bits,true).first
-            Rails.logger.info("Possibly created path: #{c.path}")
+            #Rails.logger.info("Possibly created path: #{c.path}")
             if v.is_a?(Hash) || v.is_a?(Array)
               c.merge_data(v)
             else
-              Rails.logger.info("Set value: #{c.path} == #{v}")
+              #Rails.logger.info("Set value: #{c.path} == #{v}")
               c.value = v
             end
           end
@@ -153,7 +156,7 @@ module Fabulator
         if selection.is_a?(String)
           p = Fabulator::XSM::ExpressionParser.new
           selection = p.parse(selection, ns)
-          Rails.logger.info("Parsed selection: #{YAML::dump(selection)}")
+          #Rails.logger.info("Parsed selection: #{YAML::dump(selection)}")
         end
 
         if selection.nil?
@@ -167,7 +170,7 @@ module Fabulator
       end
 
       def traverse_path(path, autovivify = false)
-        Rails.logger.info("path: [#{path}]")
+        #Rails.logger.info("path: [#{path}]")
         return [ self ] if path.nil? || path.is_a?(Array) && path.empty?
 
         path = [ path ] unless path.is_a?(Array)
@@ -180,7 +183,7 @@ module Fabulator
             if c.is_a?(String)
               cset = cc.children.select{|c3| c3.name == c }
             else
-              Rails.logger.info("running: [#{c}]")
+              #Rails.logger.info("running: [#{c}]")
               cc.push_var_ctx
               cset = c.run(cc)
               cc.pop_var_ctx
@@ -274,9 +277,9 @@ module Fabulator
 
       def run(context, autovivify = false)
         c = context.root(@axis)
-        Rails.logger.info("RootContext.run() - axis=[#{@axis}]")
-        Rails.logger.info("     c: [#{c}]")
-        Rails.logger.info("   children of c: [#{c.children.collect{|cc| cc.name}.join(", ")}]")
+        #Rails.logger.info("RootContext.run() - axis=[#{@axis}]")
+        #Rails.logger.info("     c: [#{c}]")
+        #Rails.logger.info("   children of c: [#{c.children.collect{|cc| cc.name}.join(", ")}]")
         return [ ] if c.nil?
         return [ c ]
       end

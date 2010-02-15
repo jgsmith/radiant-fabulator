@@ -1,24 +1,28 @@
 module Fabulator
-  module RdfActions
+  module Rdf
+  module Actions
   class Denial
     attr_accessor :as
 
-    def initialize(xml, def_model = nil)
-      @model = xml.attributes.get_attribute_ns(FAB_NS, 'rdf-model').value rescue def_model
+    def compile_xml(xml, c_attrs = { })
+      @model_x = ActionLib.get_attribute(RDFA_NS, 'model', c_attrs)
       # f:select ...
-      xsm_exp_parser = Fabulator::XSM::ExpressionParser.new
-      @from  = xsm_exp_parser.parse((xml.attributes.get_attribute_ns(FAB_NS, 'select').value rescue '/'), xml)
+      @from = ActionLib.get_local_attr(xml, FAB_NS, 'select', { :eval => true, :default => '/' })
       @arcs = [ ]
       xml.each_element do |e|
         if e.namespaces.namespace.href == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#' && e.name == 'RDF'
           @arcs << RdfModel.build_arcs(e)
         end
       end
+      self
     end
 
     def run(context)
+      return [] if @model_x.nil?
+      @model = @model_x.run(context).first.value
+      return [] if @model.nil?
       return [] if self.rdf_model.nil?
-      data = @from.run(context.data)
+      data = @from.run(context)
       if data.is_a?(Array)
         data.each do |d|
           self.execute_arcs(d)
@@ -26,11 +30,15 @@ module Fabulator
       else
         self.execute_arcs(data)
       end
+      @rdf_model = nil
       return []
     end
 
-    def rdf_model
-      @rdf_model ||= RdfModel.first(:conditions => [ 'name = ?', @model ])
+    def rdf_model(context)
+      if @rdf_model.nil?
+        return nil if @model.nil?
+        @rdf_model = RdfModel.first(:conditions => [ 'name = ?', @model ])
+      end
       @rdf_model
     end
 
@@ -248,6 +256,7 @@ module Fabulator
         return RdfResource.from_uri(r, self.rdf_model.rdf_namespace)
       end
     end
+  end
   end
   end
 end

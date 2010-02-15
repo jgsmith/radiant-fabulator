@@ -10,8 +10,9 @@ module Fabulator
       end
 
       def run(context, autovivify = false)
+       Rails.logger.info("Running statements: #{YAML::dump(@statements-[nil])}")
         result = [ ]
-        @statements.each do |s| 
+        (@statements - [nil]).each do |s| 
           result = s.run(context, autovivify)
         end
         return result

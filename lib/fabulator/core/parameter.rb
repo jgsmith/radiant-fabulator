@@ -1,6 +1,5 @@
 module Fabulator
-  #FAB_NS='http://dh.tamu.edu/ns/fabulator/1.0#'
-
+  module Core
   class Parameter
     attr_accessor :name
 
@@ -8,11 +7,16 @@ module Fabulator
       @required
     end
 
-    def initialize(xml)
+    def param_names
+      [ @name ]
+    end
+
+    def compile_xml(xml, c_attrs = { })
       @name = xml.attributes.get_attribute_ns(FAB_NS, 'name').value
       @constraints = [ ]
       @filters = [ ]
       @required = (xml.attributes.get_attribute_ns(FAB_NS, 'required').value rescue 'false')
+      attrs = ActionLib.collect_attributes(c_attrs, xml)
 
       case @required.downcase
         when 'yes':
@@ -29,13 +33,14 @@ module Fabulator
         next unless e.namespaces.namespace.href == FAB_NS
         case e.name
           when 'constraint':
-            @constraints << Constraint.new(e)
+            @constraints << Constraint.new.compile_xml(e, attrs)
           when 'filter':
-            @filters << Filter.new(e)
+            @filters << Filter.new.compile_xml(e, attrs)
           when 'value':
-            @constraints << Constraint.new(e)
+            @constraints << Constraint.new.compile_xml(e, attrs)
         end
       end
+      self
     end
 
     def get_context(context)
@@ -45,7 +50,7 @@ module Fabulator
     def apply_filters(context)
       filtered = [ ]
       @filters.each do |f|
-        Rails.logger.info("filter: #{f}")
+        #Rails.logger.info("filter: #{f}")
         context.each do |c|
           filtered = filtered + f.run(c.traverse_path(@name))
         end
@@ -100,5 +105,6 @@ module Fabulator
         return false
       end
     end
+  end
   end
 end

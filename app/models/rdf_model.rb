@@ -11,6 +11,8 @@ class RdfModel < ActiveRecord::Base
 
   has_many :rdf_statements
 
+  RDF_NS = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+
   def size
     self.rdf_statements.size
   end
@@ -222,7 +224,7 @@ class RdfModel < ActiveRecord::Base
           return if o.new_record?
           return if o.bnode? && self.count_statements(o,nil,nil) > 0
 
-          Rails.logger.info("delete <#{s},#{p},#{o}>")
+          #Rails.logger.info("delete <#{s},#{p},#{o}>")
           o.rdf_statements.find(:all, :conditions => [ 'rdf_model_id = ? AND subject_id = ? AND predicate_id = ?', self.id, s.id, p.id ]).each do |ob|
             ob.destroy
           end
@@ -262,6 +264,7 @@ protected
       pred = s.predicate   
       obj  = s.object
 
+      Rails.logger.info("Parsed: <#{subj}|#{pred}|#{obj}>")
       w = [ ]
       if subj.blank?
         w[0] = '?_' + subj.blank_identifier
@@ -282,7 +285,97 @@ protected
       end
       wheres << w
     end
-    return { :terms => wheres }
+    Rails.logger.info("terms: #{YAML::dump(wheres)}")
+    subjects = { }
+    wheres.each do |t|
+      subjects[t[0]] ||= { }
+      subjects[t[0]][t[1]] ||= [ ]
+      subjects[t[0]][t[1]] << t[2]
+    end
+
+    Rails.logger.info("subjects: #{YAML::dump(subjects)}")
+
+    
+    # now look for patterns -- patterns may indicate a sub-query
+    # or an object enclosure
+
+    # Array: type => rdf:Bag, rdf:Seq, rdf:Alt
+    #        child => _1, _2, ...
+    patterns = self.find_patterns(subjects)
+
+    return { :terms => wheres, :patterns => patterns, :subjects => subjects }
+  end
+
+  @@rdf_patterns = [
+    [ 'Array', {
+      :rdf_type => [RDF_NS + 'Bag', RDF_NS + 'Seq', RDF_NS + 'Alt'],
+      :required_predicates => [ RDF_NS + '_1' ],
+      :implementation => RdfPatterns::Array
+    } ],
+    [ 'Array2', {
+      :required_predicates => [ RDF_NS + 'first' ],
+      :required_triples => [
+        [ RDF_NS + 'rest', RDF_NS + 'nil' ]
+      ],
+      :implementation => RdfPatterns::Array2
+    } ],
+  ]
+
+  def self.find_patterns(subjects)
+    pats = { }
+
+    # our first run is based on rdf_type
+    # then we choose based on fit with sub-graph expectations
+    subjects.each_pair do |var, triples|
+      opts = @@rdf_patterns.select{ |p| p[1][:rdf_type].nil? || p[1][:rdf_type].empty? }.collect{|p| p[0] }
+      @@rdf_patterns.each do |p|
+        t = p[0]
+        next if opts.include?(t)
+        r = p[1]
+        if r[:rdf_type].include?(triples[RDF_NS+'type'].to_s)
+          opts << t
+        end
+      end
+      opts = opts.uniq
+      Rails.logger.info("Possibilities: #{opts.join(', ')}")
+
+      nopts = [ ]
+      opts.each do |t|
+        # check graph requirements
+        # required elements must be present
+        # optional requirements break ties
+        Rails.logger.info("Looking at patterns for #{t}")
+        @@rdf_patterns.select{ |p| p[0] == t }.collect{|p| p[1]}.each do |r|
+          #Rails.logger.info("Info: #{YAML::dump(r)}")
+          next if r[:required_predicates].nil? && r[:required_triples].nil?
+          if !r[:required_predicates].nil?
+            missing_p = false
+            r[:required_predicates].each do |p|
+              missing_p = true if triples[p].nil? || triples[p].select{ |o| o.is_a?(Array) && o[0] =~ /^\?/ || !o.is_a?(Array) && o =~ /^\?/}.empty?
+            end
+            next if missing_p
+          end
+
+          if !r[:required_triples].nil?
+            missing_t = false
+            r[:required_triples].each do |ts|
+              Rails.logger.info("Require: <#{ts[0]}|#{ts[1]}>")
+              Rails.logger.info("Available objects: #{triples[ts[0]].join(" :::: ")}")
+              missing_t = true if triples[ts[0]].nil? || triples[ts[0]].select{ |o| !o.is_a?(Array) && o.to_s == ts[1] || o.is_a?(Array) && o[0].to_s == ts[1] }.empty?
+            end
+            next if missing_t
+          end
+          nopts << t
+        end
+      end
+
+      if nopts.size > 1
+        # disambiguate based on optional patterns
+      elsif nopts.size == 1
+        pats[var] = ((@@rdf_patterns.select{ |p| p[0] == nopts.first }.first)[1][:implementation].new rescue nil)
+      end
+    end
+    return pats
   end
 
   #
@@ -352,60 +445,6 @@ protected
     # will need to check for Bag/Seq predicates
     
     return vars
-
-    if false
-      case spo
-        when 0:
-          # make sure triple is in play
-          constants << [spo] + t
-        when 1:
-          if t[0] =~ /\?_/
-            bnode_arcs[t[0]] = [ ] if bnode_arcs[t[0]].nil?
-            bnode_arcs[t[0]] << [spo] + t
-          else
-            s_arcs[t[0]] = [ ] if s_arcs[t[0]].nil?
-            s_arcs[t[0]] << [spo] + t
-          end
-        when 2:
-          if t[1] =~ /\?_/
-            bnode_arcs[t[1]] = [ ] if bnode_arcs[t[1]].nil?
-            bnode_arcs[t[1]] << [spo] + t
-          else
-            p_arcs[t[1]] = [ ] if p_arcs[t[1]].nil?
-            p_arcs[t[1]] << [spo] + t
-          end
-        when 3:
-          if t[0] =~ /\?_/
-            bnode_arcs[t[0]] = [ ] if bnode_arcs[t[0]].nil?
-            if t[1] =~ %r{^http://www.w3.org/1999/02/22-rdf-syntax-ns#_(\d+)$}
-              bnode_arcs[t[0]] << [ spo, t[0], t[0]+'_'+$1, t[2] ]
-            else
-              bnode_arcs[t[0]] << [spo] + t
-            end
-          else
-          end
-        when 4:
-          if t[2] =~ /\?_/
-            bnode_arcs[t[2]] = [ ] if bnode_arcs[t[2]].nil?
-            bnode_arcs[t[2]] << [spo] + t
-          else
-            o_arcs[t[2]] = [ ] if o_arcs[t[2]].nil?
-            o_arcs[t[2]] << [spo] + t
-          end
-        when 5:
-          if t[2] =~ /\?_/
-            bnode_arcs[t[2]] = [ ] if bnode_arcs[t[2]].nil?
-            bnode_arcs[t[2]] << [spo] + t
-          elsif t[0] =~ /\?_/
-            bnode_arcs[t[0]] = [ ] if bnode_arcs[t[0]].nil?
-            bnode_arcs[t[0]] << [spo] + t
-          else
-            o_arcs[t[2]] = [ ] if o_arcs[t[2]].nil?
-            o_arcs[t[2]] << [spo] + t
-          end
-      end
-    end
-    return { :arcs => constants + s_arcs.values + o_arcs.values + p_arcs.values + bnode_arcs.values, :vars => vars, :froms => froms }
   end
 
   def self.build_arcs_from_graph(dg,u)
@@ -444,6 +483,7 @@ protected
   def self.vars_from_bgp(bgp)
     froms = [ ]
     vars = { }
+    sub_selects = [ ]
     bgp[:terms].size.times do |i|
       froms << "rdf_statements rs_#{i}"
       if bgp[:terms][i][0] =~ /^\?(.*)$/
@@ -489,6 +529,8 @@ protected
     # Substitute each distinct blank node label in BGP with a unique variable
     # Assign each edge e in E a unique table alias t_e
     # Construct the FROM clause to contain all the table aliases
+    Rails.logger.info("bgp: #{YAML::dump(bgp)}")
+
     expr_parser = Fabulator::XSM::ExpressionParser.new
     from = []
     joins = []
@@ -496,6 +538,40 @@ protected
     sql_args[:from] = vars[:froms].join(", ")
     vars = vars[:vars]
     sql2ctx = { }
+
+    # we need to do sub-graphs
+    subs = { }
+    bgp[:patterns].each_pair do |var, handler|
+      terms = [ ]
+      new_vars = { }
+      patterns = { }
+      varstack = [ var ]
+      provides = [ ]
+      while !varstack.empty?
+        v = varstack.shift
+        nt = bgp[:terms].select{ |t| t[0] == v }
+        nv = nt.select { |t| t[2].is_a?(Array) && t[2][0] =~ /^\?/ || !t[2].is_a?(Array) && t[2] =~ /^\?/ }.collect{ |t| t[2].is_a?(Array) ? t[2][0] : t[2] } - new_vars.keys
+        nv.each do |vv|
+          new_vars[vv] = vars[vv]
+        end
+        terms = terms + nt
+        varstack = varstack + nv
+        provides = provides + nv
+      end
+      new_vars.keys.select{ |k| !bgp[:patterns][k].nil? }.each do |k|
+        patterns[k] = bgp[:patterns][k]
+      end
+      subs[var] = handler.bgp_to_sql({
+        :terms => terms,
+        #:vars => vars,
+        :patterns => patterns,
+        :root => var,
+        :provides => provides,
+      })
+      subs[var][:handler] = handler
+    end
+    sql_args[:sub_queries] = subs
+
     # Build the select statement
     select = []
     var_id = 1
@@ -504,13 +580,16 @@ protected
       if !sql2ctx[v]
         sql2ctx[v] = "var_#{var_id}"
       end
-      if i[0] == :predicate
+      #if !sql_args[:sub_queries][v].nil?
+        # let pattern implementation handle things
+      if i[0] == :predicate && !(i[1] =~ /^\?/)
         select << "#{i[1]}.predicate_id AS #{sql2ctx[v]}_id"
       elsif i[0] == :object
         select << "#{i[1]}.object_type AS #{sql2ctx[v]}_type, #{i[1]}.object_id AS #{sql2ctx[v]}_id"
-      else # i[0] == :subject
+      elsif !(i[1] =~ /^\?/) # i[0] == :subject
         select << "#{i[1]}.subject_id AS #{sql2ctx[v]}_id"
       end
+      Rails.logger.info("Last select: [#{select.last}]\ni: <#{i[0]}|#{i[1]}>")
       var_id = var_id + 1
     end
     sql_args[:select] = select.join(", ")
@@ -520,7 +599,9 @@ protected
     where_params = [ ]
     bgp[:terms].size.times do |i|
       this_table = "rs_#{i}"
-      if bgp[:terms][i][0] =~ /^\?(.*)$/
+      if !bgp[:patterns][bgp[:terms][i][0]].nil?
+        # let pattern handler handle this
+      elsif bgp[:terms][i][0] =~ /^\?(.*)$/
         s_var = $1
         if this_table != vars[s_var][1] && vars[s_var][0] == :subject
           where << %{#{this_table}.subject_id = #{vars[s_var][1]}.subject_id}
@@ -537,12 +618,14 @@ protected
         where << %{#{this_table}.subject_id = %s}
         where_params << [ :resource, bgp[:terms][i][0] ]
       end
-      if bgp[:terms][i][1] =~ /^\?(.*)$/
+      if !bgp[:patterns][bgp[:terms][i][0]].nil?
+        # let pattern handler handle this
+      elsif bgp[:terms][i][1] =~ /^\?(.*)$/
         p_var = $1
         if this_table != vars[p_var][1] && vars[p_var][0] == :predicate
           where << %{#{this_table}.predicate_id = #{vars[p_var][1]}.predicate_id}
         end
-      elsif bgp[:terms][i][1] =~ /^http:\/\/www.w3.org\/1999\/02\/22-rdf-syntax-ns#_/
+      elsif bgp[:terms][i][1] =~ /^http:\/\/www.w3.org\/1999\/02\/22-rdf-syntax-ns#_[1-9]\d*$/
         rr_n = "rr_#{joins.size}"
         joins << %{LEFT JOIN rdf_resources #{rr_n} ON #{rr_n}.id = #{this_table}.predicate_id}
         where << %{#{rr_n}.rdf_namespace_id = %s AND #{rr_n}.local_name LIKE '_%%'}
@@ -551,6 +634,8 @@ protected
         where << %{#{this_table}.predicate_id = %s}
         where_params << [ :resource, bgp[:terms][i][1] ]
       end
+      #if !bgp[:patterns][bgp[:terms][i][0]].nil?
+        # let pattern handler handle this
       if bgp[:terms][i][2].is_a?(Array)
         if bgp[:terms][i][2][0] =~ /^\?(.*)$/
           o_var = $1
@@ -609,7 +694,6 @@ protected
     sql_args[:simple_where] = where.join("\n    AND ")
     sql_args[:where_params] = where_params
     sql_args[:joins] = joins.join("\n")
-   
     return sql_args
   end
 end

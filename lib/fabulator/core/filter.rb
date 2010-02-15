@@ -1,16 +1,17 @@
 module Fabulator
-  #FAB_NS='http://dh.tamu.edu/ns/fabulator/1.0#'
-
+  module Core
   class Filter
-    def initialize(xml)
-      @filter_type = xml.attributes.get_attribute_ns(FAB_NS, 'name').value
+    def compile_xml(xml, c_attrs = { })
+      #@filter_type = xml.attributes.get_attribute_ns(FAB_NS, 'name').value
+      @filter_type = ActionLib.get_local_attr(xml, FAB_NS, 'name')
+      self
     end
 
     def run(context)
       # do special ones first
       items = context.is_a?(Array) ? context : [ context ]
       filtered = [ ]
-      case @filter_type
+      case @filter_type.run(context).first.value
         when 'trim':
           items.each do |c|
             v = c.value
@@ -49,6 +50,7 @@ module Fabulator
             filtered << c.path
           end
         else
+          # TODO: Decouple Fabulator from Radiant extension
           f = FabulatorFilter.find_by_name(@type) rescue nil
           items.each do |c|
             f.run(context) unless f.nil?
@@ -57,5 +59,6 @@ module Fabulator
       end
       return filtered
     end
+  end
   end
 end

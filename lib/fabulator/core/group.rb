@@ -1,10 +1,11 @@
 module Fabulator
+  module Core
   class Group
     attr_accessor :name, :params
-    def initialize(xml)
-      parser = Fabulator::XSM::ExpressionParser.new
-      @select = parser.parse((xml.attributes.get_attribute_ns(FAB_NS, 'select').value rescue ''), xml)
+    def compile_xml(xml, c_attrs)
+      @select = ActionLib.get_local_attr(xml, FAB_NS, 'select', { :eval => true })
 
+      attrs = ActionLib.collect_attributes(c_attrs, xml)
       @params = { }
       @constraints = [ ]
       @filter = [ ]
@@ -14,23 +15,24 @@ module Fabulator
 
         case e.name
           when 'param':
-            v = Parameter.new(e)
+            v = Parameter.new.compile_xml(e,attrs)
             @params << v
             @required_params = @required_params + v.names if v.required?
           when 'group':
-            v = Group.new(e)
+            v = Group.new.compile_xml(e,attrs)
             @params << v
             @required_params = @required_params + v.required_params.collect{ |n| (@name + '/' + n).gsub(/\/+/, '/') }
           when 'constraint':
-            @constraints << Constraint.new(e)
+            @constraints << Constraint.new.compile_xml(e,attrs)
           when 'filter':
-            @filters << Filter.new(e)
+            @filters << Filter.new.compile_xml(e,attrs)
         end
       end
+      self
     end
 
     def apply_filters(context)
-      roots = @select.run(context)
+      roots = @select.nil? ? [ context ] : @select.run(context)
       filtered = [ ]
 
       roots.each do |root|
@@ -71,5 +73,6 @@ module Fabulator
         end
       end
     end
+  end
   end
 end

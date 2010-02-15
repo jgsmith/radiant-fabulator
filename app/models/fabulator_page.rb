@@ -1,4 +1,9 @@
 class FabulatorPage < Page
+  # precompile xslt so we don't do this for *every* request
+
+  @@fabulator_xslt_file = RAILS_ROOT + '/vendor/extensions/fabulator/xslt/form.xsl'
+  @@fabulator_xslt = REXML::Document.new File.open(@@fabulator_xslt_file)
+
   description %{
     A Fabulator page allows you to create a simple, interactive
     web application that manages data in RDF models defined in the
@@ -8,8 +13,8 @@ class FabulatorPage < Page
   XML_PART_NAME = 'extended'
 
   #before_save :compile_xsm
-  before_save :compile_xsm
   after_save :set_defaults
+  #after_save :compile_xsm
   attr_accessor :resource_ln, :c_state_machine
 
   # create tags to access filtered data in page display
@@ -21,19 +26,19 @@ class FabulatorPage < Page
   end
 
   def find_by_url(url, live = true, clean = false)
-    Rails.logger.info("find_by_url(#{url}, #{live}, #{clean})")
-    Rails.logger.info("invoking super")
+    #Rails.logger.info("find_by_url(#{url}, #{live}, #{clean})")
+    #Rails.logger.info("invoking super")
     p = super
-    Rails.logger.info("returning from super")
-    Rails.logger.info("Found #{p}")
+    #Rails.logger.info("returning from super")
+    #Rails.logger.info("Found #{p}")
     return p if !p.nil? && !p.is_a?(FileNotFoundPage)
-    Rails.logger.info("Seeing if we have a resource")
+    #Rails.logger.info("Seeing if we have a resource")
 
     url = clean_url(url) if clean
-    Rails.logger.info("Our url: #{self.url}")
-    Rails.logger.info("Target url: #{url}")
+    #Rails.logger.info("Our url: #{self.url}")
+    #Rails.logger.info("Target url: #{url}")
     if url =~ %r{^#{ self.url }([-_0-9a-zA-Z]+)/?$}
-      Rails.logger.info("resource: #{$1}")
+      #Rails.logger.info("resource: #{$1}")
       self.resource_ln = $1
       return self
     else
@@ -42,20 +47,20 @@ class FabulatorPage < Page
   end
 
   def url
-    Rails.logger.info("Getting url")
+    #Rails.logger.info("Getting url")
     u = super
     if !self.resource_ln.nil?
       u = u + '/' + self.resource_ln
     end
-    Rails.logger.info("Returning '#{u}' as url")
+    #Rails.logger.info("Returning '#{u}' as url")
     u
   end
 
   def state_machine
-    self.c_state_machine = YAML::load(self.compiled_xml) unless self.c_state_machine
-    if !self.c_state_machine || self.c_state_machine.updated_at.nil? ||
-            self.c_state_machine.updated_at < self.updated_at
+    if self.compiled_xml.nil? || self.compiled_xml == ''
       self.c_state_machine = self.compile_xsm
+    else
+      self.c_state_machine = (YAML::load(self.compiled_xml) rescue nil) unless self.c_state_machine
     end
     self.c_state_machine
   end
@@ -119,7 +124,7 @@ class FabulatorPage < Page
 
       sm.context = context.context
       if sm.context.empty?
-        sm.init_context(self.fabulator_context.data)
+        sm.init_context(self.fabulator_context)
       end
       #sm.context.merge!(self.resource_ln, ['resource'] ) if self.resource_ln
       if request.method == :post
@@ -160,6 +165,8 @@ class FabulatorPage < Page
     return '' if xml.blank?
 
     c = get_fabulator_context(tag)
+
+    Rails.logger.info("Context: #{YAML::dump(c)}")
 
     missing_args = tag.locals.page.missing_args
 
@@ -258,11 +265,13 @@ class FabulatorPage < Page
     end
 
     # then return the result of applying the xslt/form.xslt
+    #
+    # TODO: need to add functions to allow fetching data at transformation
+    #       time, if needed.
     xslt = XML::XSLT.new()
-    xslt_file = RAILS_ROOT + '/vendor/extensions/fabulator/xslt/form.xsl'
     xslt.parameters = { }
     xslt.xml = doc
-    xslt.xsl = REXML::Document.new File.open(xslt_file)
+    xslt.xsl = @@fabulator_xslt
     xslt.serve()
   end
 
@@ -283,11 +292,11 @@ class FabulatorPage < Page
   tag 'for-each' do |tag|
     selection = tag.attr['select']
     c = get_fabulator_context(tag)
-    Rails.logger.info("context: #{YAML::dump(c)}")
-    Rails.logger.info("for-each: #{selection} from #{c}")
+    #Rails.logger.info("context: #{YAML::dump(c)}")
+    #Rails.logger.info("for-each: #{selection} from #{c}")
     items = c.nil? ? [] : c.eval_expression(selection, get_fabulator_ns(tag))
     res = ''
-    Rails.logger.info("Found #{items.size} items for for-each")
+    #Rails.logger.info("Found #{items.size} items for for-each")
     items.each do |i|
       next if i.empty?
       tag.locals.fabulator_context = i
@@ -367,6 +376,11 @@ class FabulatorPage < Page
 #  end
 
   def compile_xsm
+    @in_compile_xsm = 0 if @in_compile_xsm.nil?
+    return if @in_compile_xsm > 1
+
+    @in_compile_xsm = @in_compile_xsm + 1
+    
     xml_part = self.part(XML_PART_NAME)
     return nil if xml_part.nil?
     xml_part = xml_part.content
@@ -377,13 +391,16 @@ class FabulatorPage < Page
       doc = LibXML::XML::Document.string xml_part
       # apply any XSLT here
       # compile
-      sm = Fabulator::StateMachine.new(doc)
-      #Rails.logger.info(YAML::dump(sm))
+      sm = Fabulator::Core::StateMachine.new.compile_xml(doc)
       sm.updated_at = self.updated_at
+      Rails.logger.info(YAML::dump(sm))
+      @state_machine = sm
 
       self[:compiled_xml] = YAML::dump(sm)
     end
-#    self.save
+    self.save
+
+    @in_compile_xsm = @in_compile_xsm - 1
     sm
   end
 
@@ -395,11 +412,11 @@ private
     if c.nil?
       c = tag.globals.page
     end
-    Rails.logger.info("page: #{c}")
-    Rails.logger.info("state machine: #{c.state_machine}")
-    Rails.logger.info("namespaces: #{c.state_machine.namespaces}")
+    #Rails.logger.info("page: #{c}")
+    #Rails.logger.info("state machine: #{c.state_machine}")
+    #Rails.logger.info("namespaces: #{c.state_machine.namespaces}")
     ret = (c.state_machine.namespaces rescue { })
-    Rails.logger.info("get_fabulator_ns: [#{ret}]")
+    #Rails.logger.info("get_fabulator_ns: [#{ret}]")
     ret
   end
 
@@ -425,10 +442,11 @@ private
 
     # compile statemachine into a set of Ruby objects and save
     # not the most efficient, but we don't usually have hundreds of states
+    self[:compiled_xml] = nil
     sm = self.state_machine
     Rails.logger.info("SM: #{YAML::dump(sm)}")
     return if sm.nil?
-    Rails.logger.info("Ensuring the right parts are present")
+    #Rails.logger.info("Ensuring the right parts are present")
 
     sm.state_names.sort.each do |part_name|
       parts.create(:name => part_name, :content => %{

@@ -1,27 +1,27 @@
 module Fabulator
-  module RdfActions
+  module Rdf
+  module Actions
   class Query
     attr_accessor :as
 
-    def initialize(xml, def_model = nil)
-      @model = (xml.attributes.get_attribute_ns(FAB_NS, 'rdf-model').value rescue def_model)
-      @model = def_model if @model.nil? || @model.blank?
-      @select= (xml.attributes.get_attribute_ns(FAB_NS, 'select').value rescue '')
-#      @goto  = (xml.attributes.get_attribute_ns(FAB_NS, 'go-to').value rescue nil)
-      parser = Fabulator::XSM::ExpressionParser.new
-      @select = (parser.parse(@select, xml) rescue nil)
-      @as = nil
+    def compile_xml(xml, c_attrs = { })
+      @model_x = ActionLib.get_attribute(RDFA_NS, 'model', c_attrs)
+      @select = ActionLib.get_local_attr(xml, FAB_NS, 'select', { :eval => true, :default => '.'})
 
       @sql = [ ]
       xml.each_element do |e|
         @sql << RdfModel.build_query(e)
       end
-
-      Rails.logger.info("Query object initialized")
+      self
     end
 
     def run(c)
-      rdf_model = RdfModel.first(:conditions => [ 'name = ?', @model ])
+      Rails.logger.info("Query running!\n\n\n")
+      model = (@model_x.run(c).first.value rescue nil)
+      Rails.logger.info("model: #{model}")
+      return [] if model.nil?
+      rdf_model = RdfModel.first(:conditions => [ 'name = ?', model ])
+      Rails.logger.info("rdf model: #{rdf_model}")
       return [] if rdf_model.nil?
 
       context = (@select.run(c).first rescue c)
@@ -39,7 +39,7 @@ module Fabulator
                   conditions << (RdfLiteral.first(:conditions => [ 'obj_lit = ?', p[1] ]).id rescue 0)
                 else
                   possible = p[1].run(context).collect{|c| c.value} - [ nil ]
-                  Rails.logger.info("Ran #{YAML::dump(p[1])}\n and got #{YAML::dump(possible)}")
+                  #Rails.logger.info("Ran #{YAML::dump(p[1])}\n and got #{YAML::dump(possible)}")
                   conditions << RdfLiteral.find(:all, :conditions => [ 'obj_lit in ?', possible ]).collect{|c| c.id}
                 end
               when :resource:
@@ -47,8 +47,11 @@ module Fabulator
                   conditions << (RdfResource.from_uri(p[1], rdf_model.rdf_namespace).id rescue 0)
                 else
                   possible = p[1].run(context).collect{|c| c.value} - [ nil ]
-                  Rails.logger.info("Ran #{YAML::dump(p[1])}\n and got #{YAML::dump(possible)}")
-                  conditions << possible.collect{|u| Rails.logger.info("Looking up resource for #{u}"); RdfResource.from_uri(u, rdf_model.rdf_namespace).id rescue 0}
+                  #Rails.logger.info("Ran #{YAML::dump(p[1])}\n and got #{YAML::dump(possible)}")
+                  conditions << possible.collect{|u| 
+                    # Rails.logger.info("Looking up resource for #{u}") 
+                    (RdfResource.from_uri(u, rdf_model.rdf_namespace).id rescue 0)
+                  }
                 end
               when :namespace:
                 conditions << (RdfNamespace.first(:conditions => [ 'namespace = ?', p[1] ]).id rescue 0)
@@ -82,6 +85,7 @@ module Fabulator
       end
       return [ ]
     end
+  end
   end
   end
 end
