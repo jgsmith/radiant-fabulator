@@ -3,10 +3,11 @@ require 'xml/xslt'
 require 'rdf/redland/parser'
 require 'xml/libxml'
 
-require_dependency "#{File.expand_path(File.dirname(__FILE__))}/lib/fabulator" #/state_machine"
+require_dependency "#{File.expand_path(File.dirname(__FILE__))}/lib/fabulator/rdf" #/state_machine"
 require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"
 
 require 'fabulator'
+require 'fabulator/rdf'
 
 class FabulatorExtension < Radiant::Extension
   version "1.0"
