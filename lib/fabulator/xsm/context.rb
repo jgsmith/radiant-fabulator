@@ -18,6 +18,10 @@ module Fabulator
         self.value.to_s
       end
 
+      def anon_node(v)
+        return self.class.new(self.axis, self.roots, v, [])
+      end
+
       def ctx
         return parent.ctx if @parent && @parent != self
         return @e_ctx
@@ -25,8 +29,7 @@ module Fabulator
 
       def set_var(n,v)
         return @roots['data'].set_var(n,v) if @roots['data'] != self
-        #return parent.set_var(n,v) if @parent && @parent != self
-        if n =~ /$\$?(.*)$/
+        if n =~ /^\$?(.*)$/
           @e_ctx[:vars] ||= [ ]
           @e_ctx[:vars][0] ||= { }
           @e_ctx[:vars][0][$1] = v

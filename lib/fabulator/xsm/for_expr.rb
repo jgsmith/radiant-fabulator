@@ -6,13 +6,15 @@ module Fabulator
           @var = v.shift
           @expr = Fabulator::XSM::ForExpr.new(v, e)
         else
-          @var = v
+          @var = v.first
           @expr = e
         end
       end
 
       def run(context, autovivify = false)
         result = [ ]
+        return result if @var.nil? || @expr.nil?
+
         @var.each_binding(context, autovivify) do |b|
           result = result + @expr.run(b)
         end
@@ -24,9 +26,9 @@ module Fabulator
       def run(context, autovivify = false)
         result = super
         result.each do |r|
-          return [ ] unless r
+          return [ ] unless !!r.value
         end
-        return [ true ]
+        return [ context.anon_node(true) ]
       end
     end
 
@@ -34,7 +36,7 @@ module Fabulator
       def run(context, autovivify = false)
         result = super
         result.each do |r|
-          return [ true ] if r
+          return [ context.anon_node(true) ] if !!r.value
         end
         return [ ]
       end
@@ -42,17 +44,18 @@ module Fabulator
 
     class ForVar
       def initialize(n, e)
-        n =~ /\$(.*)/
+        n =~ /^\$?(.*)$/
         @var_name = $1
         @expr = e
       end
 
       def each_binding(context, autovivify = false, &block)
+        context.push_var_ctx
         @expr.run(context, autovivify).each do |e|
-          cc = context.clone_vars
-          cc.set_var(@var_name, e)
-          yield cc
+          context.set_var(@var_name, e)
+          yield context
         end
+        context.pop_var_ctx
       end
     end
   end

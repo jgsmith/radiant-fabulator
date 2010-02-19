@@ -3,7 +3,7 @@ module Fabulator
     class LetExpr
       def initialize(dqname, expr)
         @expr = expr
-        dqname =~ /^\$(.*)$/
+        dqname =~ /^\$?(.*)$/
         @name = $1
       end
 

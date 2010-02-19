@@ -39,7 +39,7 @@ module_eval(<<'...end xsm_expression_parser.racc/module_eval...', 'xsm_expressio
   end
 
   @@regex = {
-    :simple_tokens => %r{\.\.|::|!=|>=|<=|\/\/|:=|\.|@|\*|\(|\)|\[|\]|\{|\}|\/|\||\+|-|=|>|<|&|,|;},
+    :simple_tokens => %r{\.\.|::|!=|>=|<=|\/\/|:=|\.|@|[*]|\(|\)|\[|\]|\{|\}|\/|\||\+|-|=|>|<|&|,|;},
     :ncname => %r{(?:[a-zA-Z_][-a-zA-Z0-9_.]*)},
     :event_type => %r{(?:processing-instruction|comment|text|node)},
     :axis_name => %r{(?:attribute|child|child-or-self|descendant|descendant-or-self|method|self)},
@@ -147,11 +147,17 @@ module_eval(<<'...end xsm_expression_parser.racc/module_eval...', 'xsm_expressio
       #Rails.logger.info("last token: <#{@last_token[0]}|#{@last_token[1]}>")
       #Rails.logger.info("preceding_tokens: #{@@preceding_tokens[@last_token[1]] ? 'true' : 'false'}")
       if @source[@curpos..@curpos] == '*'
-        @token = [ '*', '*' ]
+        @token = [ :STAR, '*' ]
       else
         if @source[@curpos..@source.length-1] =~ /^(#{@@regex[:ncname]})/
           ncname = $1
           case ncname
+            when 'for':
+              @token = [ :FOR, 'for' ]
+            when 'return':
+              @token = [ :RETURN, 'return' ]
+            when 'in':
+              @token = [ :IN, 'in' ]
             when 'let':
               @token = [ :LET, 'let' ]
             when 'except':
@@ -189,7 +195,7 @@ module_eval(<<'...end xsm_expression_parser.racc/module_eval...', 'xsm_expressio
     end
  
     if @token.nil? && @source[@curpos..@curpos+1] == '..'
-      @token = [ :RANGE, '..' ]
+      @token = [ :DOT_DOT, '..' ]
     end
 
     if @token.nil?
@@ -205,22 +211,55 @@ module_eval(<<'...end xsm_expression_parser.racc/module_eval...', 'xsm_expressio
         raise "Failed to parse '#{@source}' at #{@curpos}': #{@source[@curpos..@source.length-1]}"
       else
         if !res[1].nil?
-          @token = [ :FUNCTION_NAME, res[1] ]
+          if res[1] == 'if'
+            @token = [ :IF, 'if' ]
+          else
+            @token = [ :FUNCTION_NAME, res[1] ]
+          end
         elsif !res[2].nil?
           @token = [ res[2] == 'method' ? :AXIS_METHOD : :AXIS_NAME, res[2] ]
         elsif !res[3].nil?
           @token = [ :NAME_COLON_STAR, res[3] ]
         elsif !res[4].nil?
-          @token = [ :QNAME, res[4] ]
+          qname = res[4]
+          case qname
+            when 'for':
+              @token = [ :FOR, 'for' ]
+            when 'return':
+              @token = [ :RETURN, 'return' ]
+            when 'in':
+              @token = [ :IN, 'in' ]
+            when 'let':
+              @token = [ :LET, 'let' ]
+            when 'except':
+              @token = [ :EXCEPT, 'except' ]
+            when 'every':
+              @token = [ :EVERY, 'every' ]
+            when 'some':
+              @token = [ :SOME, 'some' ]   
+            when 'satisfies':
+              @token = [ :SATISFIES, 'satisfies' ]
+            when 'if':
+              @token = [ :IF, 'if' ]
+            when 'then':
+              @token = [ :THEN, 'then' ]
+            when 'else':
+              @token = [ :ELSE, 'else' ]
+            else
+              @token = [ :QNAME, res[4] ]
+          end
         elsif !res[5].nil?
           s = res[5]
           s = s[1..s.length-2]
           @token = [ :LITERAL, s ]
+          @curpos = @curpos + 2  # the quotes
         elsif !res[6].nil?
           @token = [ :NUMBER, res[6] ]
         elsif !res[7].nil?
+          @curpos = @curpos + 1
           @token = [ :DOLLAR_QNAME, res[7] ]
         elsif !res[8].nil?
+          Rails.logger.info("op: #{res[8]} => #{@@ops[res[8]]}")
           @token = [ @@ops[res[8]] || res[8], res[8] ]
         else
           raise "Failed to parse '#{@source}' at #{@curpos}: #{@source[@curpos..@source.length-1]}"
@@ -228,7 +267,7 @@ module_eval(<<'...end xsm_expression_parser.racc/module_eval...', 'xsm_expressio
       end
     end
 
-    #Rails.logger.info("Token: [#{@token[0].to_s},#{@token[1].to_s}]")
+    Rails.logger.info("Token: [#{@token[0].to_s},#{@token[1].to_s}]")
     if !@token[1].nil?
       @curpos = @curpos + @token[1].length
     end
@@ -793,7 +832,7 @@ module_eval(<<'.,.,', 'xsm_expression_parser.racc', 11)
 
 module_eval(<<'.,.,', 'xsm_expression_parser.racc', 23)
   def _reduce_11(val, _values, result)
-     result = Fabulator::XSM::LetExpr(val[1], val[3]) 
+     result = Fabulator::XSM::LetExpr.new(val[1], val[3]) 
     result
   end
 .,.,
@@ -842,14 +881,14 @@ module_eval(<<'.,.,', 'xsm_expression_parser.racc', 34)
 
 module_eval(<<'.,.,', 'xsm_expression_parser.racc', 36)
   def _reduce_18(val, _values, result)
-     result = Fabulator::XSM::SomeExpr(val[1], val[3]) 
+     result = Fabulator::XSM::SomeExpr.new(val[1], val[3]) 
     result
   end
 .,.,
 
 module_eval(<<'.,.,', 'xsm_expression_parser.racc', 37)
   def _reduce_19(val, _values, result)
-     result = Fabulator::XSM::EveryExpr(val[1], val[3]) 
+     result = Fabulator::XSM::EveryExpr.new(val[1], val[3]) 
     result
   end
 .,.,

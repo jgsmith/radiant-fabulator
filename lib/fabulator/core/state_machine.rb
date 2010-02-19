@@ -36,6 +36,12 @@ module Fabulator
         self.namespaces[''] = xml.root.namespaces.default.href
       rescue
       end
+
+      if @states.empty?
+        s = State.new
+        s.name = 'start'
+        @states['start'] = s
+      end
       self
     end
 

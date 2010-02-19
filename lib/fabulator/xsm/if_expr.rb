@@ -11,7 +11,7 @@ module Fabulator
         res = @test.run(context)
 
         context.push_var_ctx
-        if res.nil? || res.empty? || !res.first
+        if res.nil? || res.empty? || !res.first.value
           res = @else_expr.nil? ? [] : @else_expr.run(context, autovivify)
         else
           res = @then_expr.run(context, autovivify)

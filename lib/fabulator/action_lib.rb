@@ -63,7 +63,7 @@ module Fabulator
       return attrs[ns][attr]
     end
 
-    def self.get_local_attr(xml, ns, attr, options)
+    def self.get_local_attr(xml, ns, attr, options = {})
       v = (xml.attributes.get_attribute_ns(ns, attr).value rescue nil)
       if v.nil? && !options[:default].nil?
         v = options[:default]
@@ -106,9 +106,13 @@ module Fabulator
         if r.is_a?(Fabulator::XSM::Context) 
           r 
         elsif r.is_a?(Hash)
-          rr = Fabulator::XSM::Context.new( 'data', context.roots, nil, [])
-          rr.merge_data(r)
-          rr 
+          rr = [ ]
+          r.each_pair do |k,v|
+            rrr = Fabulator::XSM::Context.new( 'data', context.roots, v, [])
+            rrr.name = k
+            rr << rrr
+          end
+          rr
         else
           Fabulator::XSM::Context.new(
             'data',
@@ -119,7 +123,7 @@ module Fabulator
         end
       }
       #Rails.logger.info("Function #{nom} returning #{YAML::dump(ret)}")
-      ret
+      ret.flatten
     end
 
     def action_descriptions(hash=nil)

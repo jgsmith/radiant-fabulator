@@ -3,11 +3,14 @@ module Fabulator
   class State
     attr_accessor :name, :transitions
 
+    def initialize
+      @transitions = []
+      @pre_actions = []
+      @post_actions = []
+    end
+
     def compile_xml(xml, c_attrs)
       @name = xml.attributes.get_attribute_ns(FAB_NS, 'name').value
-      @transitions = [ ]
-      @pre_actions = [ ]
-      @post_actions = [ ]
       attrs = ActionLib.collect_attributes(c_attrs, xml)
       xml.each_element do |e|
         next unless e.namespaces.namespace.href == FAB_NS

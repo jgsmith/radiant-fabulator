@@ -108,6 +108,15 @@ module Fabulator
       end
     end
 
+    function 'histogram' do |args|
+      acc = { }
+      args[0].each do |a|
+        acc[a.value.to_s] ||= 0
+        acc[a.value.to_s] = acc[a.value.to_s] + 1
+      end
+      acc
+    end
+
     ###
     ### String functions
     ###

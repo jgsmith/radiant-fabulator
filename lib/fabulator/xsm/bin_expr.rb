@@ -20,12 +20,12 @@ module Fabulator
 
         l.each do |i|
           r.each do |j|
-            res << Fabulator::XSM::Context.new(
-              context.axis,
-              context.roots,
-              self.calculate(i,j),
-              []
-            )
+            calc = self.calculate(i,j)
+            if !calc.is_a?(Array)
+              calc = [ calc ]
+            end
+
+            res = res + calc.collect { |c| context.anon_node(c) }
           end
         end
         return res
@@ -63,7 +63,7 @@ module Fabulator
 
     class EqExpr < BinExpr
       def calculate(a,b)
-        a == b
+        a.to_s == b.to_s
       end
     end
 
@@ -76,21 +76,27 @@ module Fabulator
     class MpyExpr < BinExpr
       def calculate(a,b)
         return nil if a.nil? || b.nil?
-        a*b
+        r = a.to_f*b.to_f
+        return r.to_i if r % 1.0 == 0.0
+        return r
       end
     end
 
     class DivExpr < BinExpr
       def calculate(a,b)
         return nil if b.nil? || a.nil? || ( b >= 0 && b <= 0)
-        a/b
+        r = a.to_f/b.to_f
+        r = r.to_i if r % 1.0 == 0.0
+        r
       end
     end
 
     class ModExpr < BinExpr
       def calculate(a,b)
         return nil if a.nil? || b.nil?
-        a % b
+        r = a.to_f % b.to_f
+        r = r.to_i if r % 1.0 == 0.0
+        r
       end
     end
 
@@ -98,10 +104,11 @@ module Fabulator
       def calculate(a,b)
         return nil if a.nil? || b.nil?
         if a < b
-          a .. b
+          r = (a.to_i .. b.to_i).to_a
         else
-          (b .. a).reverse
+          r = (b.to_i .. a.to_i).to_a.reverse
         end
+        return r
       end
     end
   end

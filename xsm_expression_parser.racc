@@ -21,7 +21,7 @@ rule
     | for_expr
     | quant_expr
 
-  let_expr: LET DOLLAR_QNAME COLON_EQUAL expr { result = Fabulator::XSM::LetExpr(val[1], val[3]) }
+  let_expr: LET DOLLAR_QNAME COLON_EQUAL expr { result = Fabulator::XSM::LetExpr.new(val[1], val[3]) }
   
 
   if_expr: IF LP expr RP THEN expr ELSE expr { result = Fabulator::XSM::IfExpr.new(val[2], val[5], val[7]) }
@@ -34,8 +34,8 @@ rule
 
   for_var: DOLLAR_QNAME IN expr { result = Fabulator::XSM::ForVar.new(val[0], val[2]) }
 
-  quant_expr: SOME for_vars SATISFIES expr { result = Fabulator::XSM::SomeExpr(val[1], val[3]) }
-    | EVERY for_vars SATISFIES expr { result = Fabulator::XSM::EveryExpr(val[1], val[3]) }
+  quant_expr: SOME for_vars SATISFIES expr { result = Fabulator::XSM::SomeExpr.new(val[1], val[3]) }
+    | EVERY for_vars SATISFIES expr { result = Fabulator::XSM::EveryExpr.new(val[1], val[3]) }
 
   or_expr: and_expr
     | or_expr OR and_expr { result = Fabulator::XSM::OrExpr.new(val[0], val[2]) }
@@ -164,7 +164,7 @@ end
   end
 
   @@regex = {
-    :simple_tokens => %r{\.\.|::|!=|>=|<=|\/\/|:=|\.|@|\*|\(|\)|\[|\]|\{|\}|\/|\||\+|-|=|>|<|&|,|;},
+    :simple_tokens => %r{\.\.|::|!=|>=|<=|\/\/|:=|\.|@|[*]|\(|\)|\[|\]|\{|\}|\/|\||\+|-|=|>|<|&|,|;},
     :ncname => %r{(?:[a-zA-Z_][-a-zA-Z0-9_.]*)},
     :event_type => %r{(?:processing-instruction|comment|text|node)},
     :axis_name => %r{(?:attribute|child|child-or-self|descendant|descendant-or-self|method|self)},
@@ -272,11 +272,17 @@ end
       #Rails.logger.info("last token: <#{@last_token[0]}|#{@last_token[1]}>")
       #Rails.logger.info("preceding_tokens: #{@@preceding_tokens[@last_token[1]] ? 'true' : 'false'}")
       if @source[@curpos..@curpos] == '*'
-        @token = [ '*', '*' ]
+        @token = [ :STAR, '*' ]
       else
         if @source[@curpos..@source.length-1] =~ /^(#{@@regex[:ncname]})/
           ncname = $1
           case ncname
+            when 'for':
+              @token = [ :FOR, 'for' ]
+            when 'return':
+              @token = [ :RETURN, 'return' ]
+            when 'in':
+              @token = [ :IN, 'in' ]
             when 'let':
               @token = [ :LET, 'let' ]
             when 'except':
@@ -314,7 +320,7 @@ end
     end
  
     if @token.nil? && @source[@curpos..@curpos+1] == '..'
-      @token = [ :RANGE, '..' ]
+      @token = [ :DOT_DOT, '..' ]
     end
 
     if @token.nil?
@@ -330,22 +336,55 @@ end
         raise "Failed to parse '#{@source}' at #{@curpos}': #{@source[@curpos..@source.length-1]}"
       else
         if !res[1].nil?
-          @token = [ :FUNCTION_NAME, res[1] ]
+          if res[1] == 'if'
+            @token = [ :IF, 'if' ]
+          else
+            @token = [ :FUNCTION_NAME, res[1] ]
+          end
         elsif !res[2].nil?
           @token = [ res[2] == 'method' ? :AXIS_METHOD : :AXIS_NAME, res[2] ]
         elsif !res[3].nil?
           @token = [ :NAME_COLON_STAR, res[3] ]
         elsif !res[4].nil?
-          @token = [ :QNAME, res[4] ]
+          qname = res[4]
+          case qname
+            when 'for':
+              @token = [ :FOR, 'for' ]
+            when 'return':
+              @token = [ :RETURN, 'return' ]
+            when 'in':
+              @token = [ :IN, 'in' ]
+            when 'let':
+              @token = [ :LET, 'let' ]
+            when 'except':
+              @token = [ :EXCEPT, 'except' ]
+            when 'every':
+              @token = [ :EVERY, 'every' ]
+            when 'some':
+              @token = [ :SOME, 'some' ]   
+            when 'satisfies':
+              @token = [ :SATISFIES, 'satisfies' ]
+            when 'if':
+              @token = [ :IF, 'if' ]
+            when 'then':
+              @token = [ :THEN, 'then' ]
+            when 'else':
+              @token = [ :ELSE, 'else' ]
+            else
+              @token = [ :QNAME, res[4] ]
+          end
         elsif !res[5].nil?
           s = res[5]
           s = s[1..s.length-2]
           @token = [ :LITERAL, s ]
+          @curpos = @curpos + 2  # the quotes
         elsif !res[6].nil?
           @token = [ :NUMBER, res[6] ]
         elsif !res[7].nil?
+          @curpos = @curpos + 1
           @token = [ :DOLLAR_QNAME, res[7] ]
         elsif !res[8].nil?
+          Rails.logger.info("op: #{res[8]} => #{@@ops[res[8]]}")
           @token = [ @@ops[res[8]] || res[8], res[8] ]
         else
           raise "Failed to parse '#{@source}' at #{@curpos}: #{@source[@curpos..@source.length-1]}"
@@ -353,7 +392,7 @@ end
       end
     end
 
-    #Rails.logger.info("Token: [#{@token[0].to_s},#{@token[1].to_s}]")
+    Rails.logger.info("Token: [#{@token[0].to_s},#{@token[1].to_s}]")
     if !@token[1].nil?
       @curpos = @curpos + @token[1].length
     end

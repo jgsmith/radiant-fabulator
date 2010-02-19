@@ -11,7 +11,7 @@ module Fabulator
       # do special ones first
       items = context.is_a?(Array) ? context : [ context ]
       filtered = [ ]
-      case @filter_type.run(context).first.value
+      case @filter_type.run(items.first).first.value
         when 'trim':
           items.each do |c|
             v = c.value
