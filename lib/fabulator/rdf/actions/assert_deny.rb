@@ -11,13 +11,6 @@ module Fabulator
       xml.each_element do |e|
         @sql << RdfModel.build_query(e)
       end
-      #fc = xml.elements.first
-      #if fc.namespace == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#' &&
-      #   fc.local_name == 'RDF'
-      #  @sql = RdfModel.build_query(fc.to_s)
-      #end
-      #@sql[:type_ns] = fc.namespace
-      #@sql[:type_ln] = fc.local_name
       self
     end
 
@@ -51,7 +44,7 @@ module Fabulator
   end
 
   class Assert < AssertDeny
-    def run(context)
+    def run(context, autovivify = false)
       @sql.each do |s|
         return [ ] if self.count(s,context) > 0
       end
@@ -62,7 +55,7 @@ module Fabulator
   end
 
   class Deny < AssertDeny
-    def run(context)
+    def run(context, autovivify = false)
       @sql.each do |s|
         return [] if self.count(s,context) == 0
       end

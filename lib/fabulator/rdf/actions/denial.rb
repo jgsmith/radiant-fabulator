@@ -17,7 +17,7 @@ module Fabulator
       self
     end
 
-    def run(context)
+    def run(context, autovivify = false)
       return [] if @model_x.nil?
       @model = @model_x.run(context).first.value
       return [] if @model.nil?

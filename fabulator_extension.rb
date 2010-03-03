@@ -1,13 +1,20 @@
+$: << File.expand_path(File.dirname(__FILE__))+'/lib'
+
 require "rexml/document"
 require 'xml/xslt'
 require 'rdf/redland/parser'
 require 'xml/libxml'
-
-require_dependency "#{File.expand_path(File.dirname(__FILE__))}/lib/fabulator/rdf" #/state_machine"
-require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"
-
 require 'fabulator'
 require 'fabulator/rdf'
+require 'fabulator/radiant'
+
+#require_dependency "#{File.expand_path(File.dirname(__FILE__))}/lib/fabulator/rdf"
+require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"
+
+#require 'fabulator'
+#require 'fabulator/rdf'
+#require 'fabulator/rdf/actions'
+#require 'fabulator/rdf/actions/assert_deny'
 
 class FabulatorExtension < Radiant::Extension
   version "1.0"
@@ -28,8 +35,9 @@ class FabulatorExtension < Radiant::Extension
 
   def activate
     FabulatorPage
-    Fabulator::XSM::ExpressionParser.new
-    Fabulator::XSM::Literal.new(nil)
+    Fabulator::Expr::Parser.new
+    Fabulator::Expr::Literal.new(nil)
+    RdfModel
 
     fab_tab = admin.nav_tab( :fabulator, "Fabulator" )
     fab_tab << admin.nav_item( :rdf_models, "RDF Models", "/admin/fabulator/rdf_models" )

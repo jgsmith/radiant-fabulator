@@ -1,0 +1,1 @@
+require 'fabulator/radiant/actions'

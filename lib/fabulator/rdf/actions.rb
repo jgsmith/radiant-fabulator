@@ -16,11 +16,11 @@ module Fabulator
 
     register_attribute 'model'
 
-    action 'assert'    , Assert
-    action 'deny'      , Deny
-    action 'assertion' , Assertion
-    action 'denial'    , Denial
-    action 'query'     , Query
+    action 'assert'    , Fabulator::Rdf::Actions::Assert
+    action 'deny'      , Fabulator::Rdf::Actions::Deny
+    action 'assertion' , Fabulator::Rdf::Actions::Assertion
+    action 'denial'    , Fabulator::Rdf::Actions::Denial
+    action 'query'     , Fabulator::Rdf::Actions::Query
   end
   end
   end

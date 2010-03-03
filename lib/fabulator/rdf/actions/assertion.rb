@@ -19,7 +19,7 @@ module Fabulator
       self
     end
 
-    def run(context)
+    def run(context, autovivify = false)
       Rails.logger.info("Running an assertion")
       return [] if @model_x.nil?
       @model = @model_x.run(context).first.value

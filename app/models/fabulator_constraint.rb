@@ -4,7 +4,7 @@ class FabulatorConstraint < ActiveRecord::Base
 
   def before_save
     # compile constraint
-    p = Fabulator::XSM::ExpressionParser.new
+    p = Fabulator::Expr::Parser.new
     self.compiled_fn = YAML::Dump(p.compile(self.fn))
   end
 

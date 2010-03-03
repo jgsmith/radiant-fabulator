@@ -71,7 +71,7 @@ class FabulatorPage < Page
     end
 
     if @roots['data'].nil?
-      @roots['data'] = Fabulator::XSM::Context.new('data', @roots, nil, [])
+      @roots['data'] = Fabulator::Expr::Node.new('data', @roots, nil, [])
       @roots['data'].traverse_path(['resource'], true).first.value = self.resource_ln if self.resource_ln
       self.state_machine.init_context(@roots['data'])
     end
@@ -132,7 +132,7 @@ class FabulatorPage < Page
         # save context
         @sm_missing_args = sm.missing_params
         @sm_errors       = sm.errors
-        context.update_attribute(:context, sm.context.context)
+        context.update_attribute(:context, sm.context)
       end
       # save statemachine state
       # display resulting view

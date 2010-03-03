@@ -307,22 +307,24 @@ protected
   end
 
   @@rdf_patterns = [
-    [ 'Array', {
-      :rdf_type => [RDF_NS + 'Bag', RDF_NS + 'Seq', RDF_NS + 'Alt'],
-      :required_predicates => [ RDF_NS + '_1' ],
-      :implementation => RdfPatterns::Array
-    } ],
-    [ 'Array2', {
-      :required_predicates => [ RDF_NS + 'first' ],
-      :required_triples => [
-        [ RDF_NS + 'rest', RDF_NS + 'nil' ]
-      ],
-      :implementation => RdfPatterns::Array2
-    } ],
+#    [ 'Array', {
+#      :rdf_type => [RDF_NS + 'Bag', RDF_NS + 'Seq', RDF_NS + 'Alt'],
+#      :required_predicates => [ RDF_NS + '_1' ],
+#      :implementation => RdfPatterns::Array
+#    } ],
+#    [ 'Array2', {
+#      :required_predicates => [ RDF_NS + 'first' ],
+#      :required_triples => [
+#        [ RDF_NS + 'rest', RDF_NS + 'nil' ]
+#      ],
+#      :implementation => RdfPatterns::Array2
+#    } ],
   ]
 
   def self.find_patterns(subjects)
     pats = { }
+
+    return pats
 
     # our first run is based on rdf_type
     # then we choose based on fit with sub-graph expectations
@@ -531,7 +533,7 @@ protected
     # Construct the FROM clause to contain all the table aliases
     Rails.logger.info("bgp: #{YAML::dump(bgp)}")
 
-    expr_parser = Fabulator::XSM::ExpressionParser.new
+    expr_parser = Fabulator::Expr::Parser.new
     from = []
     joins = []
     vars = self.vars_from_bgp(bgp)

@@ -5,7 +5,7 @@ class FabulatorFilter < ActiveRecord::Base
 
   def before_save
     # compile constraint
-    p = Fabulator::XSM::ExpressionParser.new
+    p = Fabulator::Expr::Parser.new
 #    Rails.logger.info("Definition:  [#{self.definition}]")
     self.compiled_def = YAML::dump(p.parse(self.definition))
     true

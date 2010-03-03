@@ -15,7 +15,7 @@ module Fabulator
       self
     end
 
-    def run(c)
+    def run(c, autovivify = false)
       Rails.logger.info("Query running!\n\n\n")
       model = (@model_x.run(c).first.value rescue nil)
       Rails.logger.info("model: #{model}")
@@ -73,7 +73,7 @@ module Fabulator
         Rails.logger.info("Merging #{YAML::dump(results)}")
         res_ctx = [ ]
         results.each do |r|
-          c = Fabulator::XSM::Context.new(
+          c = Fabulator::Expr::Node.new(
             'data', context.roots, nil, [], nil
           )
           c.merge_data(r)
