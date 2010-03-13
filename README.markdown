@@ -17,5 +17,9 @@ libraries:
 
 * Redland RDF Ruby bindings (for RDF parsing)
 * xml/libxml (GNOME XML library bindings)
+* ruby-fabulator gem
+
+You may also want to add some fabulator extensions.
+See http://github.com/jgsmith/
 
 [Radiant CMS]: http://www.radiantcms.org/

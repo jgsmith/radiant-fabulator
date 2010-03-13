@@ -5,7 +5,6 @@ require 'xml/xslt'
 require 'rdf/redland/parser'
 require 'xml/libxml'
 require 'fabulator'
-require 'fabulator/rdf'
 require 'fabulator/radiant'
 
 #require_dependency "#{File.expand_path(File.dirname(__FILE__))}/lib/fabulator/rdf"

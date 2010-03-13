@@ -317,7 +317,7 @@ class FabulatorPage < Page
     selection = tag.attr['select']
     c = get_fabulator_context(tag)
     items = c.nil? ? [] : c.eval_expression(selection, get_fabulator_ns(tag))
-    items.collect{|i| i.to_s }.join('')
+    items.collect{|i| i.to([Fabulator::FAB_NS, 'html']).value }.join('')
   end
 
   desc %{

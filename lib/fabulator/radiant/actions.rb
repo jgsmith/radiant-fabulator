@@ -34,7 +34,14 @@ module Fabulator
           Lib.page_to_node(Page.find_by_parent_id(nil), ctx)
         end
 
+        function 'find', [ RADIANT_NS, 'page' ] do |ctx, args, ns|
+          args[0].collect { |a|
+            Lib.page_to_node(Page.find_by_parent_id(nil).find_by_url(a.to_s), ctx)
+          }
+        end
+
         def self.page_to_node(p, ctx)
+          return nil if p.nil?
           p_node = ctx.anon_node(p, [ RADIANT_NS, 'page' ])
           p_node.name = p.slug
           p.parts.each do |pp|
