@@ -18,8 +18,18 @@ libraries:
 * Redland RDF Ruby bindings (for RDF parsing)
 * xml/libxml (GNOME XML library bindings)
 * ruby-fabulator gem
+* rgl gem
 
 You may also want to add some fabulator extensions.
 See http://github.com/jgsmith/
+
+FreeBSD
+-------
+
+The Fabulator extension and plugins are developed on FreeBSD.  There are a
+number of things to note when installing on FreeBSD.  The Redland Ruby
+bindings seem to be broken if installing from a package.  The xml/libxml
+and xslt packages might have a few issues as well.  Keep an eye on where
+files are placed in case Ruby thinks they need to be somewhere else.
 
 [Radiant CMS]: http://www.radiantcms.org/
