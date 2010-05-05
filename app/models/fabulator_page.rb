@@ -141,7 +141,7 @@ class FabulatorPage < Page
         end
         # save statemachine state
         # display resulting view
-      rescue FabulatorRequireAuth => e
+      rescue Fabulator::FabulatorRequireAuth => e
         @redirecting = e.to_s
       end
       return '' if @redirecting
