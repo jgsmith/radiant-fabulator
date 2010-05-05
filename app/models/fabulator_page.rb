@@ -89,13 +89,17 @@ class FabulatorPage < Page
       {
         :location => self.url,
       }
+    elsif @redirecting
+      {
+        :location => @redirecting,
+      }
     else
       { }
     end
   end
 
   def response_code
-    @resetting_context ? 302 : 200
+    @resetting_context ? 302 : ( @redirecting ? 304 : 200 )
   end
 
   def render_snippet(p)
@@ -122,20 +126,25 @@ class FabulatorPage < Page
         return
       end
 
-      sm.context = context.context
-      if sm.context.empty?
-        sm.init_context(self.fabulator_context)
+      begin
+        sm.context = context.context
+        if sm.context.empty?
+          sm.init_context(self.fabulator_context)
+        end
+        #sm.context.merge!(self.resource_ln, ['resource'] ) if self.resource_ln
+        if request.method == :post
+          sm.run(params)
+          # save context
+          @sm_missing_args = sm.missing_params
+          @sm_errors       = sm.errors
+          context.update_attribute(:context, sm.context)
+        end
+        # save statemachine state
+        # display resulting view
+      rescue FabulatorRequireAuth => e
+        @redirecting = e.to_s
       end
-      #sm.context.merge!(self.resource_ln, ['resource'] ) if self.resource_ln
-      if request.method == :post
-        sm.run(params)
-        # save context
-        @sm_missing_args = sm.missing_params
-        @sm_errors       = sm.errors
-        context.update_attribute(:context, sm.context)
-      end
-      # save statemachine state
-      # display resulting view
+      return '' if @redirecting
       if sm.state != XML_PART_NAME
         return self.render_part(sm.state)
       else
@@ -165,8 +174,6 @@ class FabulatorPage < Page
     return '' if xml.blank?
 
     c = get_fabulator_context(tag)
-
-    Rails.logger.info("Context: #{YAML::dump(c)}")
 
     missing_args = tag.locals.page.missing_args
 
@@ -325,15 +332,18 @@ class FabulatorPage < Page
     uses the 'otherwise' tag.
   }
   tag 'choose' do |tag|
-    tag.locals.chosen = false
-    tag.expand
+    @chosen ||= [ ]
+    @chosen.unshift false
+    ret = tag.expand
+    @chosen.shift
+    ret
   end
 
   desc %{
     Renders the enclosed content if the test passes.
   }
   tag 'choose:when' do |tag|
-    return '' unless tag.locals.chosen
+    return '' if @chosen.first
     selection = tag.attr['test']
     c = get_fabulator_context(tag)
     items = c.nil? ? [] : c.eval_expression(selection, get_fabulator_ns(tag))
@@ -341,11 +351,11 @@ class FabulatorPage < Page
       if items.empty?
         return ''
       else
-        tag.locals.chosen = true
+        @chosen[0] = true
         return tag.expand
       end
     elsif items
-      tag.locals.chosen = true
+      @chosen[0] = true
       return tag.expand
     end
     return ''
@@ -355,7 +365,7 @@ class FabulatorPage < Page
     Renders the enclosed content.
   }
   tag 'choose:otherwise' do |tag|
-    return '' if tag.locals.chosen
+    return '' if @chosen.first
     tag.expand
   end
 
@@ -377,8 +387,8 @@ class FabulatorPage < Page
 
   def compile_xsm
     @in_compile_xsm = 0 if @in_compile_xsm.nil?
-    return if @in_compile_xsm > 1
 
+    return if @in_compile_xsm > 1
     @in_compile_xsm = @in_compile_xsm + 1
     
     xml_part = self.part(XML_PART_NAME)

@@ -21,6 +21,7 @@ module Fabulator
     action 'assertion' , Fabulator::Rdf::Actions::Assertion
     action 'denial'    , Fabulator::Rdf::Actions::Denial
     action 'query'     , Fabulator::Rdf::Actions::Query
+
   end
   end
   end

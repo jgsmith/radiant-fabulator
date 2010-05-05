@@ -1,11 +1,25 @@
+require 'fabulator/action_lib'
+require 'fabulator/radiant/actions/require_auth'
+
 module Fabulator
   RADIANT_NS="http://dh.tamu.edu/ns/fabulator/radiant/1.0#"
+  class FabulatorRequireAuth < StandardError
+    def initialize(message = "") super; end
+  end
+
   module Radiant
     module Actions
       class Lib
         include Fabulator::ActionLib
 
         register_namespace RADIANT_NS
+
+        register_attribute 'login-url'
+
+        action 'require-auth', Fabulator::Radiant::Actions::RequireAuth
+
+        register_type 'user', {
+        }
 
         register_type 'page', {
           :ops => {
@@ -22,7 +36,7 @@ module Fabulator
           :to => [
             { :type => [ FAB_NS, 'string' ],
               :weight => 1.0,
-              :convert => Proc.new { |p| p.value }
+              :convert => Proc.new { |p| p.anon_node(p.value, [ FAB_NS, 'string' ]) }
             }
           ],
         }
@@ -38,6 +52,18 @@ module Fabulator
           args[0].collect { |a|
             Lib.page_to_node(Page.find_by_parent_id(nil).find_by_url(a.to_s), ctx)
           }
+        end
+
+        function 'current-user' do |ctx, args, ns|
+          u = UserActionObserver.current_user
+          if !u.nil?
+            n = ctx.anon_node(u.id) #, [ RADIANT_NS, 'user' ])
+            n.set_attribute('admin', u.admin?)
+Rails.logger.info("Returning: #{YAML::dump(n)}")
+            return [ n ]
+          else
+            return [ ]
+          end
         end
 
         def self.page_to_node(p, ctx)
