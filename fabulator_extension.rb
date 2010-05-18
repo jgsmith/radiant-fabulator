@@ -56,6 +56,27 @@ class FabulatorExtension < Radiant::Extension
     admin.filters = load_default_fabulator_filter_regions
     admin.constraints = load_default_fabulator_filter_regions
     admin.databases = load_default_fabulator_database_regions
+
+    PagePart.class_eval do
+      before_save :compile_xml
+
+      def compile_xml
+        if self.page.class_name == 'FabulatorPage' &&
+           self.name == FabulatorExtension::XML_PART_NAME
+          Rails.logger.info("WE NEED TO COMPILE THE XML!");
+          if self.content.nil? || self.content == ''
+            self.page.compiled_xml = nil
+          else
+            doc = LibXML::XML::Document.string self.content
+            # apply any XSLT here
+            # compile
+            sm = Fabulator::Core::StateMachine.new.compile_xml(doc)
+            self.page.compiled_xml = YAML::dump(sm)
+          end
+          self.page.save
+        end
+      end
+    end
   end
 
   def deactivate

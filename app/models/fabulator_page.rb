@@ -12,9 +12,7 @@ class FabulatorPage < Page
   # need a reasonable name for the XML part
   XML_PART_NAME = 'extended'
 
-  #before_save :compile_xsm
   after_save :set_defaults
-  #after_save :compile_xsm
   attr_accessor :resource_ln, :c_state_machine
 
   # create tags to access filtered data in page display
@@ -58,7 +56,7 @@ class FabulatorPage < Page
 
   def state_machine
     if self.compiled_xml.nil? || self.compiled_xml == ''
-      self.c_state_machine = self.compile_xsm
+      self.c_state_machine = nil
     else
       self.c_state_machine = (YAML::load(self.compiled_xml) rescue nil) unless self.c_state_machine
     end
@@ -368,52 +366,6 @@ class FabulatorPage < Page
     return '' if @chosen.first
     tag.expand
   end
-
-#  def compile_xsm
-#    xml_part = (part(XML_PART_NAME).content rescue '')
-#    if xml_part.nil? || xml_part == ''
-#      @compiled_xml = YAML::dump(nil)
-#      return
-#    end
-#
-#    doc = LibXML::XML::Document.string xml_part
-#    # apply any XSLT here
-#    # compile
-#    sm = Fabulator::StateMachine.new(doc)
-#    #Rails.logger.info(YAML::dump(sm))
-#
-#    @compiled_xml = YAML::dump(sm)
-#  end
-
-  def compile_xsm
-    @in_compile_xsm = 0 if @in_compile_xsm.nil?
-
-    return if @in_compile_xsm > 1
-    @in_compile_xsm = @in_compile_xsm + 1
-    
-    xml_part = self.part(XML_PART_NAME)
-    return nil if xml_part.nil?
-    xml_part = xml_part.content
-    if xml_part.nil? || xml_part == ''
-      self[:compiled_xml] = YAML::dump(nil)
-      sm = nil
-    else
-      doc = LibXML::XML::Document.string xml_part
-      # apply any XSLT here
-      # compile
-      sm = Fabulator::Core::StateMachine.new.compile_xml(doc)
-      sm.updated_at = self.updated_at
-      #Rails.logger.info(YAML::dump(sm))
-      @state_machine = sm
-
-      self[:compiled_xml] = YAML::dump(sm)
-    end
-    self.save
-
-    @in_compile_xsm = @in_compile_xsm - 1
-    sm
-  end
-
 
 private
 
