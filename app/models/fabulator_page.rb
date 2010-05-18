@@ -14,7 +14,7 @@ class FabulatorPage < Page
 
   #before_save :compile_xsm
   after_save :set_defaults
-  after_save :compile_xsm
+  #after_save :compile_xsm
   attr_accessor :resource_ln, :c_state_machine
 
   # create tags to access filtered data in page display
@@ -452,7 +452,8 @@ private
 
     # compile statemachine into a set of Ruby objects and save
     # not the most efficient, but we don't usually have hundreds of states
-    #self[:compiled_xml] = nil
+    self[:compiled_xml] = nil
+    @compiled_xml = nil
     sm = self.state_machine
     Rails.logger.info("SM: #{YAML::dump(sm)}")
     return if sm.nil?
