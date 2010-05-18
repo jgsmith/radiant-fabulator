@@ -14,7 +14,7 @@ class FabulatorPage < Page
 
   #before_save :compile_xsm
   after_save :set_defaults
-  #after_save :compile_xsm
+  after_save :compile_xsm
   attr_accessor :resource_ln, :c_state_machine
 
   # create tags to access filtered data in page display
@@ -182,7 +182,7 @@ class FabulatorPage < Page
       root = c
       form_base = c.path.gsub(/^.*::/, '').gsub('/', '.').gsub(/^\.+/, '')
     else
-      root = c.nil? ? nil : c.eval_expression('/' + form_base.gsub('.', '/')).first
+      root = c.nil? ? nil : c.eval_expression('/' + form_base.gsub('.', '/'), get_fabulator_ns(tag)).first
     end
     root = c
 
@@ -403,7 +403,7 @@ class FabulatorPage < Page
       # compile
       sm = Fabulator::Core::StateMachine.new.compile_xml(doc)
       sm.updated_at = self.updated_at
-      Rails.logger.info(YAML::dump(sm))
+      #Rails.logger.info(YAML::dump(sm))
       @state_machine = sm
 
       self[:compiled_xml] = YAML::dump(sm)
@@ -452,7 +452,7 @@ private
 
     # compile statemachine into a set of Ruby objects and save
     # not the most efficient, but we don't usually have hundreds of states
-    self[:compiled_xml] = nil
+    #self[:compiled_xml] = nil
     sm = self.state_machine
     Rails.logger.info("SM: #{YAML::dump(sm)}")
     return if sm.nil?
