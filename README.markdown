@@ -19,6 +19,7 @@ libraries:
 * xml/libxml (GNOME XML library bindings)
 * ruby-fabulator gem
 * rgl gem
+* uuid gem (for RDF handling)
 
 You may also want to add some fabulator extensions.
 See http://github.com/jgsmith/
