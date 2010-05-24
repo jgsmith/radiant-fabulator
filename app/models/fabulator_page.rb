@@ -4,6 +4,8 @@ class FabulatorPage < Page
   @@fabulator_xslt_file = RAILS_ROOT + '/vendor/extensions/fabulator/xslt/form.xsl'
   @@fabulator_xslt = REXML::Document.new File.open(@@fabulator_xslt_file)
 
+  attr_accessor :inner_content
+
   description %{
     A Fabulator page allows you to create a simple, interactive
     web application that manages data in RDF models defined in the
@@ -299,7 +301,19 @@ class FabulatorPage < Page
     c = get_fabulator_context(tag)
     #Rails.logger.info("context: #{YAML::dump(c)}")
     #Rails.logger.info("for-each: #{selection} from #{c}")
-    items = c.nil? ? [] : c.eval_expression(selection, get_fabulator_ns(tag))
+    ns = get_fabulator_ns(tag)
+    items = c.nil? ? [] : c.eval_expression(selection, ns)
+    sort_by = tag.attr['sort']
+    sort_dir = tag.attr['order'] || 'asc'
+
+    if !sort_by.nil? && sort_by != ''
+      parser = Fabulator::Expr::Parser.new
+      sort_by_f = parser.parse(sort_by, ns)
+      items = items.sort_by { |i| i.eval_expression(sort_by, ns).first.value }
+      if sort_dir == 'desc'
+        items.reverse!
+      end
+    end
     res = ''
     #Rails.logger.info("Found #{items.size} items for for-each")
     items.each do |i|
@@ -365,6 +379,24 @@ class FabulatorPage < Page
   tag 'choose:otherwise' do |tag|
     return '' if @chosen.first
     tag.expand
+  end
+
+  desc %{
+    Renders the inherited view.
+  }
+  tag 'inner' do |tag|
+    @inner_content.nil? ? '' : @inner_content
+  end
+
+  desc %{
+    Renders the parent view providing the child view as an augmentation.
+  }
+  tag 'augment' do |tag|
+    parent_page = self.state_machine.isa
+    inner = tag.expand
+    return inner if parent_page.nil?
+    parent_page.inner_content = inner
+    parent_page.render_part(self.state_machine.state)
   end
 
 private

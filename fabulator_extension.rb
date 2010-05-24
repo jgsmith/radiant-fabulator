@@ -64,14 +64,24 @@ class FabulatorExtension < Radiant::Extension
       def compile_xml
         if self.page.class_name == 'FabulatorPage' &&
            self.name == FabulatorExtension::XML_PART_NAME
-          Rails.logger.info("WE NEED TO COMPILE THE XML!");
           if self.content.nil? || self.content == ''
             self.page.compiled_xml = nil
           else
             doc = LibXML::XML::Document.string self.content
             # apply any XSLT here
             # compile
-            sm = Fabulator::Core::StateMachine.new.compile_xml(doc)
+            isa = Fabulator::ActionLib.get_local_attr(doc.root, Fabulator::FAB_NS, 'is-a')
+            sm = nil
+            if isa.nil?
+              sm = Fabulator::Core::StateMachine.new.compile_xml(doc)
+            else
+              supersm_page = self.page.find_by_url(isa)
+              if supersm_page.nil? || supersm_page.is_a?(FileNotFoundPage) || !supersm_page.is_a?(FabulatorPage) || supersm_page.state_machine.nil?
+                raise "File Not Found: unable to find #{isa}"
+              end
+              sm = supersm_page.state_machine.clone
+              sm.compile_xml(doc)
+            end
             self.page.compiled_xml = YAML::dump(sm)
           end
           self.page.save
