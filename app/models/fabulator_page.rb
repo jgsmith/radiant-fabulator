@@ -143,6 +143,8 @@ class FabulatorPage < Page
         # display resulting view
       rescue Fabulator::FabulatorRequireAuth => e
         @redirecting = e.to_s
+      rescue => e
+        return "<p>#{e.to_s}</p><pre>" + e.backtrace.join("\n") + "</pre>"
       end
       return '' if @redirecting
       if sm.state != XML_PART_NAME
