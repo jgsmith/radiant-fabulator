@@ -127,7 +127,7 @@ class FabulatorPage < Page
       end
 
       begin
-        sm.context = context.context
+        sm.context = YAML::load(context.context)
         if sm.context.empty?
           sm.init_context(self.fabulator_context)
         end
@@ -137,7 +137,7 @@ class FabulatorPage < Page
           # save context
           @sm_missing_args = sm.missing_params
           @sm_errors       = sm.errors
-          context.context = sm.context
+          context.context = YAML::dump(sm.context)
           context.save
         end
         # save statemachine state
