@@ -27,7 +27,7 @@ class FabulatorContext < ActiveRecord::Base
     p.fabulator_context = c.context unless c.nil?
     return c unless c.nil?
     self.new(
-      :context => YAML::dump({ :data => p.fabulator_context}),
+      :context => YAML::dump(p.fabulator_context),
       :page_id => p.id,
       :user_id => p.request.session[:user_id],
       :session => p.request.session[:session_id]
