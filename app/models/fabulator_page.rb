@@ -137,7 +137,8 @@ class FabulatorPage < Page
           # save context
           @sm_missing_args = sm.missing_params
           @sm_errors       = sm.errors
-          context.update_attribute(:context, sm.context)
+          context.context = sm.context
+          context.save
         end
         # save statemachine state
         # display resulting view
