@@ -196,8 +196,21 @@ class FabulatorPage < Page
     form_el.add_attribute('id', form_base)
 
     # add default values
-    # borrowed heavily from http://cpansearch.perl.org/src/JSMITH/Gestinanna-0.02/lib/Gestinanna/ContentProvider/XSM.pm
+    self.add_default_values(doc, root)
 
+    # then return the result of applying the xslt/form.xslt
+    #
+    # TODO: need to add functions to allow fetching data at transformation
+    #       time, if needed.
+    xslt = XML::XSLT.new()
+    xslt.parameters = { }
+    xslt.xml = doc
+    xslt.xsl = @@fabulator_xslt
+    xslt.serve()
+  end
+
+  # borrowed heavily from http://cpansearch.perl.org/src/JSMITH/Gestinanna-0.02/lib/Gestinanna/ContentProvider/XSM.pm
+  def add_default_values(doc, root)
     REXML::XPath.each(doc.root, %{
       //text
       | //textline
@@ -274,15 +287,6 @@ class FabulatorPage < Page
       end
     end
 
-    # then return the result of applying the xslt/form.xslt
-    #
-    # TODO: need to add functions to allow fetching data at transformation
-    #       time, if needed.
-    xslt = XML::XSLT.new()
-    xslt.parameters = { }
-    xslt.xml = doc
-    xslt.xsl = @@fabulator_xslt
-    xslt.serve()
   end
 
   desc %{
