@@ -429,6 +429,10 @@ private
         c = tag.globals.page.fabulator_context
       end
     end
+    # TODO: move serialization back into the model
+    if c.is_a?(String)
+      c = YAML::load(c)
+    end
     if c.is_a?(Hash)
       c = c[:data]
     end
