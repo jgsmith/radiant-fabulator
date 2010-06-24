@@ -64,6 +64,7 @@ class FabulatorExtension < Radiant::Extension
       def compile_xml
         if self.page.class_name == 'FabulatorPage' &&
            self.name == FabulatorExtension::XML_PART_NAME
+          old_compiled_xml = self.page.compiled_xml
           if self.content.nil? || self.content == ''
             self.page.compiled_xml = nil
           else
@@ -84,7 +85,9 @@ class FabulatorExtension < Radiant::Extension
             end
             self.page.compiled_xml = YAML::dump(sm)
           end
-          self.page.save
+          if old_compiled_xml != self.page.compiled_xml
+            self.page.save
+          end
         end
       end
     end
