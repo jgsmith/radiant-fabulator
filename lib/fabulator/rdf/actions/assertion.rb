@@ -289,6 +289,8 @@ module Fabulator
           r = self.rdf_model.create_resource
           data.create_child(v, r.uri)
           return r
+        elsif data_v == ''
+          return nil
         else
           return RdfResource.from_uri(data_v, self.rdf_model.rdf_namespace)
         end
