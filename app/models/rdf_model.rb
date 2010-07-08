@@ -673,15 +673,40 @@ protected
         if bgp[:terms][i][2] =~ /^\?(.*)$/
           o_var = $1
           if this_table != vars[o_var][1] && vars[o_var][0] == :object
-            where << %{
-              #{this_table}.object_type = #{vars[o_var][1]}.object_type AND
-              #{this_table}.object_id   = #{vars[o_var][1]}.object_id
-            }
+            if o_var =~ /^\?/
+              where << %{
+                (
+                #{this_table}.object_type = #{vars[o_var][1]}.object_type AND
+                #{this_table}.object_id   = #{vars[o_var][1]}.object_id
+                OR
+                #{this_table}.object_type IS NULL AND
+                #{this_table}.object_id   IS NULL
+                )
+              }
+            else
+              where << %{
+                #{this_table}.object_type = #{vars[o_var][1]}.object_type AND
+                #{this_table}.object_id   = #{vars[o_var][1]}.object_id
+              }
+            end
           elsif this_table != vars[o_var][1]
-            where << %{
-              #{this_table}.object_type = 'RdfResource' AND
-              #{this_table}.object_id = #{vars[o_var][1]}.subject_id
-            }
+            if o_var =~ /^\?/
+              where << %{
+                (
+                #{this_table}.object_type = 'RdfResource' AND
+                #{this_table}.object_id = #{vars[o_var][1]}.subject_id
+                OR
+                (#{this_table}.object_type = 'RdfResource' OR
+                 #{this_table}.object_type IS NULL) AND
+                #{this_table}.object_id IS NULL
+                )
+              }
+            else
+              where << %{
+                #{this_table}.object_type = 'RdfResource' AND
+                #{this_table}.object_id = #{vars[o_var][1]}.subject_id
+              }
+            end
           end
         else
           where << %{#{this_table}.object_type = 'RdfResource' AND #{this_table}.object_id = %s}
