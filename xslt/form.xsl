@@ -887,9 +887,14 @@
         <xsl:apply-templates select="help"/>
       </span>
       <span class="form-group-elements">
+        <xsl:call-template name="form-body">
+          <xsl:with-param name="form_level"><xsl:value-of select="$form_level"/></xsl:with-param>
+        </xsl:call-template>
+<!--
         <xsl:apply-templates>
           <xsl:with-param name="form_level"><xsl:value-of select="$form_level"/></xsl:with-param>
         </xsl:apply-templates>
+-->
       </span>
     </span>
   </xsl:template>
