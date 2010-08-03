@@ -4,10 +4,11 @@ module Fabulator
   class Assertion
     attr_accessor :as
 
-    def compile_xml(xml, c_attrs = { })
-      @model_x = ActionLib.get_attribute(RDFA_NS, 'model', c_attrs)
-      @from = ActionLib.get_local_attr(xml, FAB_NS, 'select', { :eval => true, :default => '/' })
-      @mode_x = ActionLib.get_local_attr(xml, FAB_NS, 'mode', { :default => 'overwrite' })
+    def compile_xml(xml, context)
+      @context = context.merge(xml)
+      @model_x = @context.attribute(RDFA_NS, 'model', { :static => false, :inherited => true })
+      @from = @context.get_select('/')
+      @mode = @context.attribute(FAB_NS, 'mode', { :default => 'overwrite', :static => true })
 
       @arcs = [ ]
       xml.each_element do |e|
@@ -20,21 +21,20 @@ module Fabulator
     end
 
     def run(context, autovivify = false)
-      Rails.logger.info("Running an assertion")
-      return [] if @model_x.nil?
-      @model = @model_x.run(context).first.value
-      return [] if @model.nil?
-      return [] if self.rdf_model.nil?
-      data = @from.run(context)
-      @mode = @mode_x.run(context).first.value
-      #Rails.logger.info("Data: #{YAML::dump(data)}")
-      result = [ ]
-      if data.is_a?(Array)
-        data.each do |d|
-          self.execute_arcs(d)
+      @context.with(context) do |ctx|
+        return [] if @model_x.nil?
+        @model = @model_x.run(ctx).first.value
+        return [] if @model.nil?
+        return [] if self.rdf_model.nil?
+        data = @from.run(ctx)
+        result = [ ]
+        if data.is_a?(Array)
+          data.each do |d|
+            self.execute_arcs(ctx.with_root(d))
+          end
+        else
+          self.execute_arcs(ctx.with_root(data))
         end
-      else
-        self.execute_arcs(data)
       end
       return [ ]
     end

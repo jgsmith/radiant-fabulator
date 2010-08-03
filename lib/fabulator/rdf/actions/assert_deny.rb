@@ -4,12 +4,13 @@ module Fabulator
   class AssertDeny
     attr_accessor :state
 
-    def compile_xml(xml, c_attrs = { })
-      @model_x = ActionLib.get_attribute(RDFA_NS, 'model', c_attrs)
+    def compile_xml(xml, context)
+      @context = context.merge(xml)
+      @model_x = @context.attribute(RDFA_NS, 'model', { :inherited => true })
       @state = xml.attributes.get_attribute_ns(RDFA_NS, 'go-to').value rescue nil
       @sql = [ ]
       xml.each_element do |e|
-        @sql << RdfModel.build_query(e)
+        @sql << RdfModel.build_query(e, @context)
       end
       self
     end
@@ -45,23 +46,23 @@ module Fabulator
 
   class Assert < AssertDeny
     def run(context, autovivify = false)
-      @sql.each do |s|
-        return [ ] if self.count(s,context) > 0
+      @context.with(context) do |ctx|
+        @sql.each do |s|
+          return [ ] if self.count(s,ctx) > 0
+        end
+        raise Fabulator::StateChangeException, self.state, caller
       end
-      raise Fabulator::StateChangeException, self.state, caller
-      #context.state = self.state
-      #return false
     end
   end
 
   class Deny < AssertDeny
     def run(context, autovivify = false)
-      @sql.each do |s|
-        return [] if self.count(s,context) == 0
+      @context.with(context) do |ctx|
+        @sql.each do |s|
+          return [] if self.count(s,ctx) == 0
+        end
+        raise Fabulator::StateChangeException, self.state, caller
       end
-      raise Fabulator::StateChangeException, self.state, caller
-      #context.state = self.state
-      #return false
     end
   end
   end

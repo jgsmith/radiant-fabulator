@@ -4,10 +4,11 @@ module Fabulator
   class Denial
     attr_accessor :as
 
-    def compile_xml(xml, c_attrs = { })
-      @model_x = ActionLib.get_attribute(RDFA_NS, 'model', c_attrs)
+    def compile_xml(xml, context)
+      @context = context.merge(xml)
+      @model_x = @context.attribute(RDFA_NS, 'model', { :inherited => true, :static => false })
       # f:select ...
-      @from = ActionLib.get_local_attr(xml, FAB_NS, 'select', { :eval => true, :default => '/' })
+      @from = @context.get_select('/')
       @arcs = [ ]
       xml.each_element do |e|
         if e.namespaces.namespace.href == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#' && e.name == 'RDF'
@@ -19,18 +20,20 @@ module Fabulator
 
     def run(context, autovivify = false)
       return [] if @model_x.nil?
-      @model = @model_x.run(context).first.value
-      return [] if @model.nil?
-      return [] if self.rdf_model.nil?
-      data = @from.run(context)
-      if data.is_a?(Array)
-        data.each do |d|
-          self.execute_arcs(d)
+      @context.with(context) do |ctx|
+        @model = @model_x.run(ctx).first.value
+        return [] if @model.nil?
+        return [] if self.rdf_model.nil?
+        data = @from.run(ctx)
+        if data.is_a?(Array)
+          data.each do |d|
+            self.execute_arcs(d)
+          end
+        else
+          self.execute_arcs(data)
         end
-      else
-        self.execute_arcs(data)
+        @rdf_model = nil
       end
-      @rdf_model = nil
       return []
     end
 

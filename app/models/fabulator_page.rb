@@ -72,8 +72,10 @@ class FabulatorPage < Page
 
     if @roots['data'].nil?
       @roots['data'] = Fabulator::Expr::Node.new('data', @roots, nil, [])
-      @roots['data'].traverse_path(['resource'], true).first.value = self.resource_ln if self.resource_ln
-      self.state_machine.init_context(@roots['data'])
+      ctx = Fabulator::Expr::Context.new
+      ctx.root = @roots['data']
+      ctx.traverse_path(['resource'], true).first.value = self.resource_ln if self.resource_ln
+      self.state_machine.init_context(ctx)
     end
     @roots['data']
   end
@@ -185,7 +187,7 @@ class FabulatorPage < Page
       root = c
       form_base = c.path.gsub(/^.*::/, '').gsub('/', '.').gsub(/^\.+/, '')
     else
-      root = c.nil? ? nil : c.eval_expression('/' + form_base.gsub('.', '/'), get_fabulator_ns(tag)).first
+      root = c.nil? ? nil : c.eval_expression('/' + form_base.gsub('.', '/')).first
     end
     root = c
 
@@ -309,14 +311,14 @@ class FabulatorPage < Page
     #Rails.logger.info("context: #{YAML::dump(c)}")
     #Rails.logger.info("for-each: #{selection} from #{c}")
     ns = get_fabulator_ns(tag)
-    items = c.nil? ? [] : c.eval_expression(selection, ns)
+    items = c.nil? ? [] : c.eval_expression(selection)
     sort_by = tag.attr['sort']
     sort_dir = tag.attr['order'] || 'asc'
 
     if !sort_by.nil? && sort_by != ''
       parser = Fabulator::Expr::Parser.new
-      sort_by_f = parser.parse(sort_by, ns)
-      items = items.sort_by { |i| i.eval_expression(sort_by, ns).first.value }
+      sort_by_f = parser.parse(sort_by, c)
+      items = items.sort_by { |i| c.with_root(i).eval_expression(sort_by_f).first.value }
       if sort_dir == 'desc'
         items.reverse!
       end
@@ -325,7 +327,7 @@ class FabulatorPage < Page
     #Rails.logger.info("Found #{items.size} items for for-each")
     items.each do |i|
       next if i.empty?
-      tag.locals.fabulator_context = i
+      tag.locals.fabulator_context = c.with_root(i)
       res = res + tag.expand
     end
     res
@@ -342,7 +344,7 @@ class FabulatorPage < Page
   tag 'value' do |tag|
     selection = tag.attr['select']
     c = get_fabulator_context(tag)
-    items = c.nil? ? [] : c.eval_expression(selection, get_fabulator_ns(tag))
+    items = c.nil? ? [] : c.eval_expression(selection)
     items.collect{|i| i.to([Fabulator::FAB_NS, 'html']).value }.join('')
   end
 
@@ -365,7 +367,7 @@ class FabulatorPage < Page
     return '' if @chosen.first
     selection = tag.attr['test']
     c = get_fabulator_context(tag)
-    items = c.nil? ? [] : c.eval_expression(selection, get_fabulator_ns(tag))
+    items = c.nil? ? [] : c.eval_expression(selection)
     if items.is_a?(Array)
       if items.empty?
         return ''
@@ -424,9 +426,9 @@ private
   def get_fabulator_context(tag)
     c = tag.locals.fabulator_context
     if c.nil? 
-      c = tag.locals.page.fabulator_context 
+      c = tag.locals.page.state_machine.fabulator_context
       if c.nil?
-        c = tag.globals.page.fabulator_context
+        c = tag.globals.page.state_machine.fabulator_context
       end
     end
     # TODO: move serialization back into the model

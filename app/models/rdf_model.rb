@@ -225,7 +225,7 @@ class RdfModel < ActiveRecord::Base
           return if o.bnode? && self.count_statements(o,nil,nil) > 0
 
           #Rails.logger.info("delete <#{s},#{p},#{o}>")
-          o.rdf_statements.find(:all, :conditions => [ 'rdf_model_id = ? AND subject_id = ? AND predicate_id = ?', self.id, s.id, p.id ]).each do |ob|
+          RdfStatement.find(:all, :conditions => [ 'rdf_model_id = ? AND subject_id = ? AND predicate_id = ? AND object_type = ? AND object_id = ?', self.id, s.id, p.id, o.class.name, o.id ]).each do |ob|
             ob.destroy
           end
         end
@@ -233,10 +233,10 @@ class RdfModel < ActiveRecord::Base
     end
   end
 
-  def self.build_query(rdf)
+  def self.build_query(rdf, ctx)
     rdf_doc = LibXML::XML::Document.new
     rdf_doc.root = rdf_doc.import(rdf)
-    return self.bgp_to_sql(self.rdf_to_bgp(rdf_doc.to_s))
+    return self.bgp_to_sql(self.rdf_to_bgp(rdf_doc.to_s), ctx)
   end
 
   def self.build_arcs(rdf)
@@ -408,7 +408,6 @@ protected
       spo = spo | 32 if t[1] =~ /^\{/
       spo = spo | 64 if t[2].is_a?(Array) && t[2][0] =~ /^\{/
       spo = spo | 64 if !t[2].is_a?(Array) && t[2] =~ /^\{/
-      puts "#{spo}: <#{t.join("><")}>"
       arcs[t[0]] = [] if arcs[t[0]].nil?
       arcs[t[0]] << [spo, t[1], t[2]]
     end
@@ -526,7 +525,7 @@ protected
   # the result of this call can be saved at state machine compile time
   #
 
-  def self.bgp_to_sql(bgp)
+  def self.bgp_to_sql(bgp, ctx)
     sql_args = { }
     # Substitute each distinct blank node label in BGP with a unique variable
     # Assign each edge e in E a unique table alias t_e
@@ -569,7 +568,7 @@ protected
         :patterns => patterns,
         :root => var,
         :provides => provides,
-      })
+      }, ctx)
       subs[var][:handler] = handler
     end
     sql_args[:sub_queries] = subs
@@ -614,7 +613,7 @@ protected
           where << %{#{this_table}.subject_id = #{vars["{#{expr}}"][1]}.subject_id}
         else
           where << %{#{this_table}.subject_id in (%s)}
-          where_params << [ :resource, expr_parser.parse(expr) ]
+          where_params << [ :resource, expr_parser.parse(expr, ctx) ]
         end
       else
         where << %{#{this_table}.subject_id = %s}
@@ -662,8 +661,8 @@ protected
               (#{this_table}.object_id in (%s) AND #{this_table}.object_type = 'RdfLiteral') OR
               (#{this_table}.object_id in (%s) AND #{this_table}.object_type = 'RdfResource')
             }
-            where_params << [ :literal, expr_parser.parse(expr) ]
-            where_params << [ :resource, expr_parser.parse(expr) ]
+            where_params << [ :literal, expr_parser.parse(expr, ctx) ]
+            where_params << [ :resource, expr_parser.parse(expr, ctx) ]
           end
         else
           where << %{#{this_table}.object_type = 'RdfLiteral' AND #{this_table}.object_id = %s}

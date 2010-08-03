@@ -14,7 +14,7 @@ module Fabulator
 
         register_namespace RADIANT_NS
 
-        register_attribute 'login-url'
+#        register_attribute 'login-url'
 
         action 'require-auth', Fabulator::Radiant::Actions::RequireAuth
 
@@ -48,16 +48,16 @@ module Fabulator
           Lib.page_to_node(Page.find_by_parent_id(nil), ctx)
         end
 
-        function 'find', [ RADIANT_NS, 'page' ] do |ctx, args, ns|
+        function 'find', [ RADIANT_NS, 'page' ] do |ctx, args|
           args[0].collect { |a|
             Lib.page_to_node(Page.find_by_parent_id(nil).find_by_url(a.to_s), ctx)
           }
         end
 
-        function 'current-user' do |ctx, args, ns|
+        function 'current-user' do |ctx, args|
           u = UserActionObserver.current_user
           if !u.nil?
-            n = ctx.anon_node(u.id) #, [ RADIANT_NS, 'user' ])
+            n = ctx.root.anon_node(u.id) #, [ RADIANT_NS, 'user' ])
             n.set_attribute('admin', u.admin?)
 Rails.logger.info("Returning: #{YAML::dump(n)}")
             return [ n ]
@@ -68,10 +68,10 @@ Rails.logger.info("Returning: #{YAML::dump(n)}")
 
         def self.page_to_node(p, ctx)
           return nil if p.nil?
-          p_node = ctx.anon_node(p, [ RADIANT_NS, 'page' ])
+          p_node = ctx.root.anon_node(p, [ RADIANT_NS, 'page' ])
           p_node.name = p.slug
           p.parts.each do |pp|
-            pp_node = ctx.anon_node(pp.content, [ RADIANT_NS, 'page-part' ])
+            pp_node = ctx.root.anon_node(pp.content, [ RADIANT_NS, 'page-part' ])
             pp_node.name = pp.name
             #pp_node.set_attribute('filter', pp.filter)
             p_node.set_attribute(pp.name, pp_node)

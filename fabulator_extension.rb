@@ -8,13 +8,7 @@ require 'fabulator'
 require 'fabulator/radiant'
 require 'fabulator/rdf'
 
-#require_dependency "#{File.expand_path(File.dirname(__FILE__))}/lib/fabulator/rdf"
 require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"
-
-#require 'fabulator'
-#require 'fabulator/rdf'
-#require 'fabulator/rdf/actions'
-#require 'fabulator/rdf/actions/assert_deny'
 
 class FabulatorExtension < Radiant::Extension
   version "1.0"
@@ -71,17 +65,22 @@ class FabulatorExtension < Radiant::Extension
             doc = LibXML::XML::Document.string self.content
             # apply any XSLT here
             # compile
-            isa = Fabulator::ActionLib.get_local_attr(doc.root, Fabulator::FAB_NS, 'is-a')
+            #isa = Fabulator::ActionLib.get_local_attr(doc.root, Fabulator::FAB_NS, 'is-a')
+            isa = nil
             sm = nil
+            roots = { }
+            roots['data'] = Fabulator::Expr::Node.new('data', roots, nil, [])
+            ctx = Fabulator::Expr::Context.new
+            ctx.root = roots['data']
             if isa.nil?
-              sm = Fabulator::Core::StateMachine.new.compile_xml(doc)
+              sm = Fabulator::Core::StateMachine.new.compile_xml(doc, ctx)
             else
               supersm_page = self.page.find_by_url(isa)
               if supersm_page.nil? || supersm_page.is_a?(FileNotFoundPage) || !supersm_page.is_a?(FabulatorPage) || supersm_page.state_machine.nil?
                 raise "File Not Found: unable to find #{isa}"
               end
               sm = supersm_page.state_machine.clone
-              sm.compile_xml(doc)
+              sm.compile_xml(doc, ctx)
             end
             self.page.compiled_xml = YAML::dump(sm)
           end
