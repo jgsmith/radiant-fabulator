@@ -184,14 +184,14 @@ class FabulatorPage < Page
     missing_args = tag.locals.page.missing_args
 
     form_base = tag.attr['base']
-    if form_base.nil?
+    if form_base.nil? || form_base == ''
       root = c
       form_base = c.root.path.gsub(/^.*::/, '').gsub('/', '.').gsub(/^\.+/, '')
     else
       root = c.nil? ? nil : c.with_root(c.eval_expression('/' + form_base.gsub('.', '/')).first)
       root = c if !c.nil? && root.root.nil?
     end
-    #root = c
+    root = c
 
     xml = %{<view><form>} + xml + %{</form></view>}
     doc = REXML::Document.new xml
