@@ -179,17 +179,19 @@ class FabulatorPage < Page
     return '' if xml.blank?
 
     c = get_fabulator_context(tag)
+    root = nil
 
     missing_args = tag.locals.page.missing_args
 
     form_base = tag.attr['base']
     if form_base.nil?
       root = c
-      form_base = c.path.gsub(/^.*::/, '').gsub('/', '.').gsub(/^\.+/, '')
+      form_base = c.root.path.gsub(/^.*::/, '').gsub('/', '.').gsub(/^\.+/, '')
     else
-      root = c.nil? ? nil : c.eval_expression('/' + form_base.gsub('.', '/')).first
+      root = c.nil? ? nil : c.with_root(c.eval_expression('/' + form_base.gsub('.', '/')).first)
+      root = c if !c.nil? && root.root.nil?
     end
-    root = c
+    #root = c
 
     xml = %{<view><form>} + xml + %{</form></view>}
     doc = REXML::Document.new xml
@@ -212,7 +214,7 @@ class FabulatorPage < Page
   end
 
   # borrowed heavily from http://cpansearch.perl.org/src/JSMITH/Gestinanna-0.02/lib/Gestinanna/ContentProvider/XSM.pm
-  def add_default_values(doc, root)
+  def add_default_values(doc, ctx)
     REXML::XPath.each(doc.root, %{
       //text
       | //textline
@@ -247,9 +249,9 @@ class FabulatorPage < Page
       ids << own_id
       id = ids.collect{|i| i.to_s}.join('.')
       ids = id.split('.')
-      if !root.nil? && (default.is_a?(Array) && default.empty? || !default)
+      if !ctx.nil? && (default.is_a?(Array) && default.empty? || !default)
         # create a new node 'default'
-        l = root.traverse_path(ids)
+        l = ctx.traverse_path(ids)
         if !l.nil? && !l.empty?
           if is_grid
             count = (el.attribute('count').to_s rescue '')
