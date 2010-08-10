@@ -14,12 +14,10 @@ module Fabulator
 
         register_namespace RADIANT_NS
 
-#        register_attribute 'login-url'
+        #action 'require-auth', Fabulator::Radiant::Actions::RequireAuth
 
-        action 'require-auth', Fabulator::Radiant::Actions::RequireAuth
-
-        register_type 'user', {
-        }
+        #register_type 'user', {
+        #}
 
         register_type 'page', {
           :ops => {

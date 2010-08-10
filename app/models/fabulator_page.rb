@@ -178,6 +178,8 @@ class FabulatorPage < Page
     xml = tag.expand
     return '' if xml.blank?
 
+    text_parser = Fabulator::Template::Parser.new
+
     c = get_fabulator_context(tag)
     root = nil
 
@@ -194,23 +196,12 @@ class FabulatorPage < Page
     root = c
 
     xml = %{<view><form>} + xml + %{</form></view>}
-    doc = REXML::Document.new xml
-    # add errors and other info to doc
-    form_el = REXML::XPath.first(doc,'/view/form')
-    form_el.add_attribute('id', form_base)
+    doc = text_parser.parse(c, xml)
 
     # add default values
-    self.add_default_values(doc, root)
+    doc.add_default_values(root)
 
-    # then return the result of applying the xslt/form.xslt
-    #
-    # TODO: need to add functions to allow fetching data at transformation
-    #       time, if needed.
-    xslt = XML::XSLT.new()
-    xslt.parameters = { }
-    xslt.xml = doc
-    xslt.xsl = @@fabulator_xslt
-    xslt.serve()
+    doc.to_html
   end
 
   # borrowed heavily from http://cpansearch.perl.org/src/JSMITH/Gestinanna-0.02/lib/Gestinanna/ContentProvider/XSM.pm
