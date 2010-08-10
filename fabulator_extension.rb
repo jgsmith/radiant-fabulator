@@ -1,5 +1,6 @@
 $: << File.expand_path(File.dirname(__FILE__))+'/lib'
 
+require 'fabulator'
 require 'fabulator/radiant'
 
 require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"

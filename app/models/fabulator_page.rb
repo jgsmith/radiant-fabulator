@@ -1,9 +1,4 @@
 class FabulatorPage < Page
-  # precompile xslt so we don't do this for *every* request
-
-  @@fabulator_xslt_file = RAILS_ROOT + '/vendor/extensions/fabulator/xslt/form.xsl'
-  @@fabulator_xslt = REXML::Document.new File.open(@@fabulator_xslt_file)
-
   attr_accessor :inner_content
 
   description %{

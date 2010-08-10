@@ -1,5 +1,5 @@
 require 'fabulator/action_lib'
-require 'fabulator/radiant/actions/require_auth'
+#require 'fabulator/radiant/actions/require_auth'
 
 module Fabulator
   RADIANT_NS="http://dh.tamu.edu/ns/fabulator/radiant/1.0#"
