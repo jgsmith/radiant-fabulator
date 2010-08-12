@@ -357,7 +357,7 @@ class FabulatorPage < Page
     c = get_fabulator_context(tag)
     items = c.nil? ? [] : c.eval_expression(selection)
     if items.is_a?(Array)
-      if items.empty?
+      if items.empty? || !items[0].value
         return ''
       else
         @chosen[0] = true
