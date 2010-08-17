@@ -21,7 +21,7 @@ module Fabulator
 
         register_type 'page', {
           :ops => {
-            :children => Proc.new { |p| p.value.children.collect { |c| Lib.page_to_node(c, p) } },
+            :children => Proc.new { |p| Page.find(p.value.to_i).children.collect { |c| Lib.page_to_node(c, p) } },
           },
         }
 
@@ -57,7 +57,6 @@ module Fabulator
           if !u.nil?
             n = ctx.root.anon_node(u.id) #, [ RADIANT_NS, 'user' ])
             n.set_attribute('admin', u.admin?)
-Rails.logger.info("Returning: #{YAML::dump(n)}")
             return [ n ]
           else
             return [ ]
@@ -66,13 +65,14 @@ Rails.logger.info("Returning: #{YAML::dump(n)}")
 
         def self.page_to_node(p, ctx)
           return nil if p.nil?
-          p_node = ctx.root.anon_node(p, [ RADIANT_NS, 'page' ])
+          p_node = ctx.root.anon_node(p.id, [ RADIANT_NS, 'page' ])
           p_node.name = p.slug
           p.parts.each do |pp|
-            pp_node = ctx.root.anon_node(pp.content, [ RADIANT_NS, 'page-part' ])
-            pp_node.name = pp.name
+            #pp_node = ctx.root.anon_node(pp.content, [ RADIANT_NS, 'page-part' ])
+            #pp_node.name = pp.name
             #pp_node.set_attribute('filter', pp.filter)
-            p_node.set_attribute(pp.name, pp_node)
+            #p_node.set_attribute(pp.name, pp_node)
+            p_node.set_attribute(pp.name, pp.content)
           end
           p_node.set_attribute('title', p.title)
           p_node.set_attribute('breadcrumb', p.breadcrumb)

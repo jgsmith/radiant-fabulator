@@ -1,6 +1,7 @@
 $: << File.expand_path(File.dirname(__FILE__))+'/lib'
 
 require 'fabulator'
+require 'fabulator/template'
 require 'fabulator/radiant'
 
 require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"
@@ -27,7 +28,9 @@ class FabulatorExtension < Radiant::Extension
     end
 
     PagePart.class_eval do
-      before_save :compile_xml
+      validates_each :content do |record, attr, value|
+        record.compile_xml
+      end
 
       def compile_xml
         if self.page.class_name == 'FabulatorPage' &&
@@ -41,14 +44,22 @@ class FabulatorExtension < Radiant::Extension
             isa = nil
             sm = nil
             if isa.nil?
-              sm = Fabulator::Core::StateMachine.new.compile_xml(self.content)
+              begin
+                sm = Fabulator::Core::StateMachine.new.compile_xml(self.content)
+              rescue => e
+                self.errors.add(:content, "Compiling the XML application resulted in the following error: #{e}")
+              end
             else
               supersm_page = self.page.find_by_url(isa)
               if supersm_page.nil? || supersm_page.is_a?(FileNotFoundPage) || !supersm_page.is_a?(FabulatorPage) || supersm_page.state_machine.nil?
                 raise "File Not Found: unable to find #{isa}"
               end
               sm = supersm_page.state_machine.clone
-              sm.compile_xml(self.content)
+              begin
+                sm.compile_xml(self.content)
+              rescue => e
+                self.errors.add(:content, "Compiling the XML application resulted in the following error: #{e}")
+              end
             end
             self.page.compiled_xml = YAML::dump(sm)
           end

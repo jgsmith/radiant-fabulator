@@ -190,100 +190,13 @@ class FabulatorPage < Page
     end
     root = c
 
-    xml = %{<view><form>} + xml + %{</form></view>}
+    xml = "<view><form id='#{form_base}'>" + xml + %{</form></view>}
     doc = text_parser.parse(c, xml)
 
     # add default values
     doc.add_default_values(root)
 
     doc.to_html
-  end
-
-  # borrowed heavily from http://cpansearch.perl.org/src/JSMITH/Gestinanna-0.02/lib/Gestinanna/ContentProvider/XSM.pm
-  def add_default_values(doc, ctx)
-    REXML::XPath.each(doc.root, %{
-      //text
-      | //textline
-      | //textbox
-      | //editbox
-      | //file
-      | //password
-      | //selection
-      | //grid
-    }) do |el|
-      own_id = el.attribute('id')
-      next if own_id.nil? || own_id.to_s == ''
-
-      default = 0
-      is_grid = false
-      if el.local_name == 'grid'
-        default = REXML::XPath.match(el, './default | ./row/default | ./column/default')
-        is_grid = true
-      else
-        default = REXML::XPath.match(el, './default')
-      end
-
-      #missing = el.attribute('missing')
-
-      ancestors = REXML::XPath.match(el, %{
-        ancestor::option[@id != '']
-        | ancestor::group[@id != '']
-        | ancestor::form[@id != '']
-        | ancestor::container[@id != '']
-      })
-      ids = ancestors.collect{|a| a.attribute('id')}.select{|a| !a.nil? }
-      ids << own_id
-      id = ids.collect{|i| i.to_s}.join('.')
-      ids = id.split('.')
-      if !ctx.nil? && (default.is_a?(Array) && default.empty? || !default)
-        # create a new node 'default'
-        l = ctx.traverse_path(ids)
-        if !l.nil? && !l.empty?
-          if is_grid
-            count = (el.attribute('count').to_s rescue '')
-            how_many = 'multiple'
-            direction = 'both'
-            if count =~ %r{^(multiple|single)(-by-(row|column))?$}
-              how_many = $1
-              direction = $3 || 'both'
-            end
-            if direction == 'both'
-              l.collect{|ll| ll.value }.each do |v|
-                default = el.add_element('default')
-                default.add_text(v)
-              end
-            elsif direction == 'row' || direction == 'column'
-              REXML::XPath.each(el, "./#{direction}").each do |div|
-                id = (div.attribute('id').to_s rescue '')
-                next if id == ''
-                l.collect{|c| c.traverse_path(id)}.flatten.collect{|c| c.value }. each do |v|
-                  default = div.add_element('default')
-                  default.add_text(v)
-                end
-              end
-            end
-          else
-            l.collect{|ll| ll.value }.each do |v|
-              default = el.add_element('default')
-              default.add_text(v)
-            end
-          end
-        end
-      end
-      # now handle missing info for el
-
-      if !missing_args.nil? && missing_args.include?(id)
-        el.add_attribute('missing', '1')
-      end
-    end
-
-  end
-
-  desc %{
-    Defines XML namespace prefix to URI mappings.
-  }
-  tag 'xmlns' do |tag|
-    tag.expand
   end
 
   desc %{
@@ -303,6 +216,8 @@ class FabulatorPage < Page
     sort_by = tag.attr['sort']
     sort_dir = tag.attr['order'] || 'asc'
 
+    as = tag.attr['as']
+
     if !sort_by.nil? && sort_by != ''
       parser = Fabulator::Expr::Parser.new
       sort_by_f = parser.parse(sort_by, c)
@@ -316,6 +231,9 @@ class FabulatorPage < Page
     items.each do |i|
       next if i.empty?
       tag.locals.fabulator_context = c.with_root(i)
+      if !as.blank?
+        tag.locals.fabulator_context.set_var(as, i)
+      end
       res = res + tag.expand
     end
     res
