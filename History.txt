@@ -1,0 +1,27 @@
+=== 0.0.4 2010-09-07
+
+* 1 major enhancement:
+  * New Fabulator pages should save without requiring a blank page first
+
+* 1 minor enhancement:
+  * Bumped required version of Fabulator to 0.0.7
+
+=== 0.0.3 2010-08-17
+
+* 2 minor enhancement:
+  * Fix truth logic for choose:when radiant tag
+  * Add 'as' attribute for for-each radiant tag - aliases the current
+    topic with the variable named by the 'as' attribute
+  * The form radiant tag now correctly communicates to the template engine
+    the path to the base node for adding default values to a form
+
+=== 0.0.2 2010-08-10
+
+* 1 major enhancement:
+  * Cleanup a few things that came up in a clean install
+
+=== 0.0.1 2010-02-23
+
+* 1 major enhancement:
+  * Initial release
+
