@@ -21,19 +21,11 @@ class FabulatorPage < Page
   end
 
   def find_by_url(url, live = true, clean = false)
-    #Rails.logger.info("find_by_url(#{url}, #{live}, #{clean})")
-    #Rails.logger.info("invoking super")
     p = super
-    #Rails.logger.info("returning from super")
-    #Rails.logger.info("Found #{p}")
     return p if !p.nil? && !p.is_a?(FileNotFoundPage)
-    #Rails.logger.info("Seeing if we have a resource")
 
     url = clean_url(url) if clean
-    #Rails.logger.info("Our url: #{self.url}")
-    #Rails.logger.info("Target url: #{url}")
     if url =~ %r{^#{ self.url }([-_0-9a-zA-Z]+)/?$}
-      #Rails.logger.info("resource: #{$1}")
       self.resource_ln = $1
       return self
     else
@@ -42,12 +34,10 @@ class FabulatorPage < Page
   end
 
   def url
-    #Rails.logger.info("Getting url")
     u = super
     if !self.resource_ln.nil?
       u = u + '/' + self.resource_ln
     end
-    #Rails.logger.info("Returning '#{u}' as url")
     u
   end
 

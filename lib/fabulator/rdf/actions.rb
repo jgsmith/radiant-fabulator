@@ -9,10 +9,9 @@ module Fabulator
 
   module Rdf
   module Actions
-  class Lib
+  class Lib < TagLib
  
-    include ActionLib
-    register_namespace RDFA_NS
+    namespace RDFA_NS
 
     register_attribute 'model'
 

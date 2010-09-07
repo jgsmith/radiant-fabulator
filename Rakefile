@@ -7,7 +7,7 @@ begin
     gem.email = "jgsmith@tamu.edu"
     gem.homepage = "http://github.com/jgsmith/radiant-fabulator"
     gem.authors = ["James Smith"]
-    gem.add_dependency('fabulator', '>= 0.0.4')
+    gem.add_dependency('fabulator', '>= 0.0.7')
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
 rescue LoadError

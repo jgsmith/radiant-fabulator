@@ -28,9 +28,11 @@ class FabulatorExtension < Radiant::Extension
     end
 
     PagePart.class_eval do
-      validates_each :content do |record, attr, value|
-        record.compile_xml
-      end
+      after_save :compile_xml
+
+#      validates_each :content do |record, attr, value|
+#        record.compile_xml
+#      end
 
       def compile_xml
         if self.page.class_name == 'FabulatorPage' &&
@@ -40,12 +42,13 @@ class FabulatorExtension < Radiant::Extension
             self.page.compiled_xml = nil
           else
             # compile
-            #isa = Fabulator::ActionLib.get_local_attr(doc.root, Fabulator::FAB_NS, 'is-a')
+            #isa = Fabulator::TagLib.get_local_attr(doc.root, Fabulator::FAB_NS, 'is-a')
             isa = nil
             sm = nil
             if isa.nil?
               begin
-                sm = Fabulator::Core::StateMachine.new.compile_xml(self.content)
+                sm = Fabulator::Core::StateMachine.new
+                sm.compile_xml(self.content)
               rescue => e
                 self.errors.add(:content, "Compiling the XML application resulted in the following error: #{e}")
               end

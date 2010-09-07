@@ -1,4 +1,4 @@
-require 'fabulator/action_lib'
+require 'fabulator/tag_lib'
 #require 'fabulator/radiant/actions/require_auth'
 
 module Fabulator
@@ -9,10 +9,9 @@ module Fabulator
 
   module Radiant
     module Actions
-      class Lib
-        include Fabulator::ActionLib
+      class Lib < Fabulator::TagLib
 
-        register_namespace RADIANT_NS
+        namespace RADIANT_NS
 
         #action 'require-auth', Fabulator::Radiant::Actions::RequireAuth
 
