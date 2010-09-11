@@ -1,6 +1,7 @@
 $: << File.expand_path(File.dirname(__FILE__))+'/lib'
 
 require 'fabulator'
+require 'fabulator/lib'
 require 'fabulator/template'
 require 'fabulator/radiant'
 
@@ -25,18 +26,27 @@ class FabulatorExtension < Radiant::Extension
     FabulatorPage
 
     tab 'Fabulator' do
+      add_item("Libraries", "/admin/fabulator/libraries")
     end
+    Radiant::AdminUI.class_eval do
+      attr_accessor :libraries
+      alias_method :fabulator_library, :libraries
+    end
+    admin.libraries = load_default_fabulator_library_regions
 
     PagePart.class_eval do
       after_save :compile_xml
 
-#      validates_each :content do |record, attr, value|
-#        record.compile_xml
-#      end
-
       def compile_xml
         if self.page.class_name == 'FabulatorPage' &&
            self.name == FabulatorExtension::XML_PART_NAME
+
+          FabulatorLibrary.all.each do |library|
+            if library.compiled_xml.is_a?(Fabulator::Lib::Lib)
+              library.compiled_xml.register_library
+            end
+          end
+
           old_compiled_xml = self.page.compiled_xml
           if self.content.nil? || self.content == ''
             self.page.compiled_xml = nil
@@ -73,4 +83,22 @@ class FabulatorExtension < Radiant::Extension
       end
     end
   end
+
+  def load_default_fabulator_library_regions
+    returning OpenStruct.new do |library|
+      library.edit = Radiant::AdminUI::RegionSet.new do |edit|
+        edit.main.concat %w{edit_header edit_form}
+        edit.form.concat %w{edit_title edit_content}
+        edit.form_bottom.concat %w{edit_buttons edit_timestamp}
+      end
+      library.index = Radiant::AdminUI::RegionSet.new do |index|
+        index.top.concat %w{help_text}
+        index.thead.concat %w{title_header modify_header}
+        index.tbody.concat %w{title_cell modify_cell}
+        index.bottom.concat %w{new_button}
+      end
+      library.new = library.edit
+    end
+  end
+
 end

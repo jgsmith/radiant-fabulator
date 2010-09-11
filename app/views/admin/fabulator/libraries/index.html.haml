@@ -1,0 +1,33 @@
+- @page_title = 'Library - ' + default_page_title
+
+.outset
+  - render_region :top
+  %table#libraries.index
+    %thead
+      %tr
+        - render_region :thead do |thead|
+          - thead.title_header do
+            %th.filter Library
+          - thead.modify_header do
+            %th.modify Modify
+    %tbody
+      - if @fabulator_libraries.any?
+        - @fabulator_libraries.each do |library|
+          %tr.node.level_1
+            - render_region :tbody do |tbody|
+              - tbody.title_cell do
+                %td.snippet
+                  = image('snippet', :alt => '')
+                  %span= link_to library.name, edit_admin_fabulator_library_url(library)
+              - tbody.modify_cell do
+                %td.remove
+                  = link_to image('remove', :alt => 'Remove Library'), remove_admin_fabulator_library_url(library)
+      - else
+        %tr
+          %td.note{:colspan => admin.fabulator_library.index.tbody.length} No Libraries
+
+- render_region :bottom do |bottom|
+  - bottom.new_button do
+    #actions
+      %ul
+        %li= link_to "New Library", { :controller => 'admin/fabulator/libraries', :action => 'new' }

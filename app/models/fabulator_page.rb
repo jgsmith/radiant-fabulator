@@ -93,8 +93,12 @@ class FabulatorPage < Page
     if p.name != XML_PART_NAME
       super
     else
-      # check if page part was updated since page -- might need to recompile
-      
+      FabulatorLibrary.all.each do |library|
+        if library.compiled_xml.is_a?(Fabulator::Lib::Lib)
+          library.compiled_xml.register_library
+        end
+      end
+
       sm = self.state_machine
       return '' if sm.nil?
 

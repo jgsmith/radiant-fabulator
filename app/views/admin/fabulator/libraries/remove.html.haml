@@ -1,0 +1,19 @@
+%h1 Remove Library
+
+%p 
+  Are you sure you want to 
+  %strong.warning permanently remove
+  the following library?
+
+%table.index#workflows
+  %tbody
+    %tr.node.level_1
+      %td.library
+        = image('snippet', :alt => "")
+        %span.title= @fabulator_library.name
+
+- form_for [:admin, @fabulator_library], :html => {:method => :delete, :onsubmit_status=>"Removing library&#8230;"} do
+  %p.buttons
+    %input.button{:type=>"submit", :value=>"Delete Library"}/
+    or
+    = link_to 'Cancel', admin_fabulator_libraries_url
