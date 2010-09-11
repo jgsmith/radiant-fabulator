@@ -1,3 +1,9 @@
+=== 0.0.5 2010-09-11
+* 1 major enhancement:
+  * Library management under Fabulator tab
+
+N.B.: This update requires a database migration to add the library table.
+
 === 0.0.4 2010-09-07
 
 * 1 major enhancement:
