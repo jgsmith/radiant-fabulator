@@ -55,13 +55,6 @@ class FabulatorPage < Page
       @roots = { }
     end
 
-    # TODO: figure out how to manage these better if performance is an issue
-    FabulatorLibrary.all.each do |library|
-      if library.compiled_xml.is_a?(Fabulator::Lib::Lib)
-        library.compiled_xml.register_library
-      end
-    end
-
     if @roots['data'].nil?
       @roots['data'] = Fabulator::Expr::Node.new('data', @roots, nil, [])
       ctx = Fabulator::Expr::Context.new
