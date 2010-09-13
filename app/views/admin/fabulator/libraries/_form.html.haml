@@ -14,7 +14,7 @@
   - render_region :form_bottom do |form_bottom|
     - form_bottom.edit_buttons do
       %p.buttons{:style=>"clear: left"}
-        = save_model_button(@fabulator_library, :label => 'Create Library')
+        = save_model_button(@fabulator_library, :label => @fabulator_library.new_record? ? 'Create Library' : 'Save Changes')
         = save_model_and_continue_editing_button(@fabulator_library)
         or
         = link_to 'Cancel', admin_fabulator_libraries_url
