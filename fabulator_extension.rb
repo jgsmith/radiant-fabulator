@@ -1,9 +1,6 @@
 $: << File.expand_path(File.dirname(__FILE__))+'/lib'
 
-require 'fabulator'
-require 'fabulator/lib'
-require 'fabulator/template'
-require 'fabulator/radiant'
+require 'fabulator_tags'
 
 require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"
 
@@ -17,7 +14,10 @@ class FabulatorExtension < Radiant::Extension
   extension_config do |config|
     config.gem 'fabulator'
     config.after_initialize do
-      #run_something
+      require 'fabulator'
+      require 'fabulator/lib'
+      require 'fabulator/template'
+      require 'fabulator/radiant'
     end
   end
 
@@ -33,6 +33,10 @@ class FabulatorExtension < Radiant::Extension
       alias_method :fabulator_library, :libraries
     end
     admin.libraries = load_default_fabulator_library_regions
+
+    Page.class_eval {
+      include FabulatorTags
+    }
 
     PagePart.class_eval do
       after_save :compile_xml
