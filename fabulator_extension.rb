@@ -5,7 +5,7 @@ require 'fabulator_tags'
 require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"
 
 class FabulatorExtension < Radiant::Extension
-  version "1.0"
+  version "0.0.6"
   description "Applications as documents"
   url "http://github.com/jgsmith/radiant-fabulator"
 
@@ -21,9 +21,19 @@ class FabulatorExtension < Radiant::Extension
     end
   end
 
+  def scripts
+    @@scripts ||= [ ]
+    @@scripts
+  end
+
+  def css
+    @@css ||= [ ]
+    @@css
+  end
 
   def activate
     FabulatorPage
+    FabulatorFilter
 
     tab 'Fabulator' do
       add_item("Libraries", "/admin/fabulator/libraries")
@@ -61,8 +71,8 @@ class FabulatorExtension < Radiant::Extension
             sm = nil
             if isa.nil?
               begin
-                sm = Fabulator::Core::StateMachine.new
-                sm.compile_xml(self.content)
+                compiler = Fabulator::Compiler.new
+                sm = compiler.compile(self.content)
               rescue => e
                 self.errors.add(:content, "Compiling the XML application resulted in the following error: #{e}")
               end

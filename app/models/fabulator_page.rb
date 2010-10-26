@@ -91,7 +91,10 @@ class FabulatorPage < Page
 
   def render_snippet(p)
     if p.name != XML_PART_NAME
-      super
+      FabulatorFilter.set_page(self)
+      r = super
+      FabulatorFilter.reset_page
+      r
     else
       FabulatorLibrary.all.each do |library|
         if library.compiled_xml.is_a?(Fabulator::Lib::Lib)
@@ -184,10 +187,15 @@ class FabulatorPage < Page
     end
     root = c
 
-    xml = "<view><form id='#{form_base}'>" + xml + %{</form></view>}
+    ## TODO: we only want to transform to HTML if we are not using
+    ## the Fabulator filter
+
+    xml = "<form xmlns='http://dh.tamu.edu/ns/fabulator/1.0#' id='#{form_base}'>" + xml + %{</form>}
     doc = text_parser.parse(c, xml)
 
     # add default values
+    return doc if doc.is_a?(String)
+
     doc.add_default_values(root)
 
     doc.to_html
@@ -221,7 +229,6 @@ class FabulatorPage < Page
       end
     end
     res = ''
-    #Rails.logger.info("Found #{items.size} items for for-each")
     items.each do |i|
       next if i.empty?
       tag.locals.fabulator_context = c.with_root(i)
@@ -245,7 +252,7 @@ class FabulatorPage < Page
     selection = tag.attr['select']
     c = get_fabulator_context(tag)
     items = c.nil? ? [] : c.eval_expression(selection)
-    items.collect{|i| i.to([Fabulator::FAB_NS, 'html']).value }.join('')
+    items.collect{|i| c.with_root(i).to([Fabulator::FAB_NS, 'html']).root.value }.join('')
   end
 
   desc %{
@@ -352,7 +359,7 @@ private
     self[:compiled_xml] = nil
     @compiled_xml = nil
     sm = self.state_machine
-    Rails.logger.info("SM: #{YAML::dump(sm)}")
+    #Rails.logger.info("SM: #{YAML::dump(sm)}")
     return if sm.nil?
     #Rails.logger.info("Ensuring the right parts are present")
 

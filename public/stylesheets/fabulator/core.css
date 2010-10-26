@@ -1,0 +1,47 @@
+/* base size can be 10pt, 11pt, etc. -- we go off percentages */
+/* multiplier is sqrt(sqrt(2)) = 1.18920 */
+.fabulator-content h1 {
+  font-size: 200%;
+  font-weight: bold;
+}
+
+.fabulator-content h2 {
+  font-size: 168%;
+  font-weight: bold;
+}
+
+.fabulator-content h3 {
+  font-size: 141%;
+  font-weight: bold;
+}
+
+.fabulator-content h4 {
+  font-size: 119%;
+  font-weight: bold;
+}
+
+.fabulator-content h5 {
+  font-weight: bold;
+}
+
+.fabulator-content h6 {
+  font-weight: bold;
+  display: inline;
+}
+
+form.form-content {
+  border: none;
+}
+
+td.form-caption {
+  border: none;
+  text-align: right;
+}
+
+td.form-element {
+  border: none;
+}
+
+td.form-element input {
+  width: *;
+}
