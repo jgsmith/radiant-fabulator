@@ -42,6 +42,25 @@ class FabulatorPage < Page
   end
 
   def state_machine
+    return @state_machine unless @state_machine.nil?
+
+    begin
+      FabulatorLibrary.all.each do |library|
+        if library.compiled_xml.is_a?(Fabulator::Lib::Lib)
+          library.compiled_xml.register_library
+        end
+      end
+
+      compiler = Fabulator::Compiler.new
+      part = self.part(XML_PART_NAME)
+      @state_machine = compiler.compile(part.content)
+    rescue => e
+      Rails.logger.info("Compiling the XML application resulted in the following error: #{e}")
+      self.errors.add(:content, "Compiling the XML application resulted in the following error: #{e}")
+    end
+
+    return @state_machine
+
     if self.compiled_xml.nil? || self.compiled_xml == ''
       self.c_state_machine = nil
     else

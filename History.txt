@@ -1,3 +1,12 @@
+=== 0.0.7 2010-10-28
+* 1 major enhancement:
+  * Applications are no longer pre-compiled when pages are saved
+
+* 2 minor enhancements:
+  * All namespaces declared with Fabulator.namespace() have a debug()
+    method that will call console.log() if it exists
+  * Updated README for rake tasks
+
 === 0.0.6 2010-10-26
 * 2 major enhancement:
   * Added fabulator:resources tag for radiant layouts to include needed

@@ -18,4 +18,13 @@ gems:
 You may also want to add some fabulator extensions.
 See http://github.com/jgsmith/
 
+After installation, you will need to add the following to your site's
+environment.rb:
+
+  config.gem 'radiant-fabulator-extension'
+
+and the following to your site's Rakefile:
+
+  require 'tasks/fabulator_extension'
+
 [Radiant CMS]: http://www.radiantcms.org/

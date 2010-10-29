@@ -5,7 +5,7 @@ require 'fabulator_tags'
 require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"
 
 class FabulatorExtension < Radiant::Extension
-  version "0.0.6"
+  version "0.0.7"
   description "Applications as documents"
   url "http://github.com/jgsmith/radiant-fabulator"
 
@@ -49,7 +49,7 @@ class FabulatorExtension < Radiant::Extension
     }
 
     PagePart.class_eval do
-      after_save :compile_xml
+      #after_save :compile_xml
 
       def compile_xml
         if self.page.class_name == 'FabulatorPage' &&
