@@ -1,3 +1,8 @@
+=== 0.0.8 2010-11-08
+
+* 1 bug fix:
+  * Find Radiant content correctly
+
 === 0.0.7 2010-10-28
 * 1 major enhancement:
   * Applications are no longer pre-compiled when pages are saved

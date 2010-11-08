@@ -19,7 +19,7 @@ module Fabulator
 
       has_type :page do
         method :CHILDREN do |p|
-          Page.find(p.root.value.to_i).children.collect { |c| Lib.page_to_node(c, p) }
+          Page.find(p.value.to_i).children.collect { |c| Lib.page_to_node(c, p) }
         end
       end
 
@@ -46,7 +46,7 @@ module Fabulator
 
       function 'find', [ RADIANT_NS, 'page' ] do |ctx, args|
         args[0].collect { |a|
-          Lib.page_to_node(Page.find_by_parent_id(nil).find_by_url(a.to_s), ctx)
+          Lib.page_to_node(Page.find_by_parent_id(nil).find_by_url(a.to_s), ctx.root)
         }
       end
 
@@ -63,10 +63,10 @@ module Fabulator
 
       def self.page_to_node(p, ctx)
         return nil if p.nil?
-        p_node = ctx.root.anon_node(p.id, [ RADIANT_NS, 'page' ])
+        p_node = ctx.anon_node(p.id, [ RADIANT_NS, 'page' ])
         p_node.name = p.slug
         p.parts.each do |pp|
-          #pp_node = ctx.root.anon_node(pp.content, [ RADIANT_NS, 'page-part' ])
+          #pp_node = ctx.anon_node(pp.content, [ RADIANT_NS, 'page-part' ])
           #pp_node.name = pp.name
           #pp_node.set_attribute('filter', pp.filter)
           #p_node.set_attribute(pp.name, pp_node)
