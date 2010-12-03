@@ -1,5 +1,4 @@
 require 'fabulator/tag_lib'
-#require 'fabulator/radiant/actions/require_auth'
 
 module Fabulator
   RADIANT_NS="http://dh.tamu.edu/ns/fabulator/radiant/1.0#"
@@ -7,12 +6,19 @@ module Fabulator
     def initialize(message = "") super; end
   end
 
+  #require 'fabulator/radiant/actions/require_auth'
+  require 'fabulator/radiant/actions/page'
+  require 'fabulator/radiant/actions/page_part'
+
   module Radiant
     class Lib < Fabulator::TagLib
 
       namespace RADIANT_NS
 
       #action 'require-auth', Fabulator::Radiant::Actions::RequireAuth
+      # used to create/update pages
+      action 'page', Fabulator::Radiant::Actions::Page
+      action 'page-part', Fabulator::Radiant::Actions::PagePart
 
       #register_type 'user', {
       #}
@@ -20,6 +26,12 @@ module Fabulator
       has_type :page do
         method :CHILDREN do |p|
           Page.find(p.value.to_i).children.collect { |c| Lib.page_to_node(c, p) }
+        end
+        coming_from [ FAB_NS, 'string' ] do
+          weight 0.9
+          converting do |p|
+            Lib.page_to_node(Page.find_by_parent_id(nil).find_by_url(p.root.value), p.root)
+          end
         end
       end
 
@@ -46,7 +58,7 @@ module Fabulator
 
       function 'find', [ RADIANT_NS, 'page' ] do |ctx, args|
         args[0].collect { |a|
-          Lib.page_to_node(Page.find_by_parent_id(nil).find_by_url(a.to_s), ctx.root)
+          a.to([ RADIANT_NS, 'page'], ctx)
         }
       end
 
