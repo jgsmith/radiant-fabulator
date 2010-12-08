@@ -4,8 +4,5 @@ ActionController::Routing::Routes.draw do |map|
       fab.resources :libraries
     end
   end
-#  map.namespace 'api' do |api|
-#    api.resources :libraries
-#  end
 end
 

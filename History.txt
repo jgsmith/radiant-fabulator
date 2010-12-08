@@ -1,3 +1,13 @@
+=== 0.0.10 2010-12-08
+
+* 1 minor enhanmcenet:
+  * Better handling of state changes and page parts
+
+=== 0.0.9 2010-12-03
+
+* 1 major enhancement:
+  * Added page and page-part elements to allow page creation
+
 === 0.0.8 2010-11-08
 
 * 1 bug fix:

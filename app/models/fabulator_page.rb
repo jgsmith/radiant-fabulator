@@ -230,8 +230,6 @@ class FabulatorPage < Page
   tag 'for-each' do |tag|
     selection = tag.attr['select']
     c = get_fabulator_context(tag)
-    #Rails.logger.info("context: #{YAML::dump(c)}")
-    #Rails.logger.info("for-each: #{selection} from #{c}")
     ns = get_fabulator_ns(tag)
     items = c.nil? ? [] : c.eval_expression(selection)
     sort_by = tag.attr['sort']
@@ -271,7 +269,11 @@ class FabulatorPage < Page
     selection = tag.attr['select']
     c = get_fabulator_context(tag)
     items = c.nil? ? [] : c.eval_expression(selection)
-    items.collect{|i| c.with_root(i).to([Fabulator::FAB_NS, 'html']).root.value }.join('')
+    if tag.attr['raw']
+      items.collect{|i| c.with_root(i).to([Fabulator::FAB_NS, 'string']).root.value }.join('')
+    else
+      items.collect{|i| c.with_root(i).to([Fabulator::FAB_NS, 'html']).root.value }.join('')
+    end
   end
 
   desc %{
@@ -341,11 +343,7 @@ private
     if c.nil?
       c = tag.globals.page
     end
-    #Rails.logger.info("page: #{c}")
-    #Rails.logger.info("state machine: #{c.state_machine}")
-    #Rails.logger.info("namespaces: #{c.state_machine.namespaces}")
     ret = (c.state_machine.namespaces rescue { })
-    #Rails.logger.info("get_fabulator_ns: [#{ret}]")
     ret
   end
 
@@ -378,15 +376,7 @@ private
     self[:compiled_xml] = nil
     @compiled_xml = nil
     sm = self.state_machine
-    #Rails.logger.info("SM: #{YAML::dump(sm)}")
     return if sm.nil?
-    #Rails.logger.info("Ensuring the right parts are present")
-
-    sm.state_names.sort.each do |part_name|
-      parts.create(:name => part_name, :content => %{
-        <h1>View for State #{part_name}</h1>
-      }) unless parts.any?{ |p| p.name == part_name }
-    end
   end
 
 end

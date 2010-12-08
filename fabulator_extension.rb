@@ -12,7 +12,7 @@ class FabulatorExtension < Radiant::Extension
   XML_PART_NAME = 'extended'
 
   extension_config do |config|
-    config.gem 'fabulator'
+#    config.gem 'fabulator'
     config.after_initialize do
       require 'fabulator'
       require 'fabulator/lib'

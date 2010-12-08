@@ -55,6 +55,7 @@ module Fabulator
 
             parents.each do |page_id|
               page = ::Page.find(page_id.value)
+              child = nil
               if using_children
                 child = page.children.select{ |c| c.slug == s }.first
                 if child.nil?
