@@ -1,0 +1,9 @@
+- @page_title = @fabulator_edition.name + ' Edition - ' + default_page_title
+
+- body_classes << "reversed"
+
+- render_region :main do |main|
+  - main.edit_header do
+    %h1 Edit Edition Description
+  - main.edit_form do
+    = render :partial => 'form'

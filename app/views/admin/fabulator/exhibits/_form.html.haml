@@ -1,0 +1,23 @@
+- form_for [:admin, @fabulator_edition], :html => {:onsubmit_status => onsubmit_status(@fabulator_edition)} do |f|
+  = f.hidden_field :lock_version
+  = render_region :form_top
+  .form_area
+    - render_region :form do |form|
+      - form.edit_title do
+        %p.title
+          = f.label :name
+          = f.text_field :name, :class => 'textbox activate', :maxlength => 100
+      - form.edit_content do
+        %p.content
+          = f.label :xml, "Description"
+          ~ f.text_area :xml, :class => "textarea large", :style => "width: 100%"
+  - render_region :form_bottom do |form_bottom|
+    - form_bottom.edit_buttons do
+      %p.buttons{:style=>"clear: left"}
+        = save_model_button(@fabulator_edition, :label => @fabulator_edition.new_record? ? 'Create Edition' : 'Save Changes')
+        = save_model_and_continue_editing_button(@fabulator_edition)
+        or
+        = link_to 'Cancel', admin_fabulator_editions_url
+    - form_bottom.edit_timestamp do
+      %p.updated_line
+        = updated_stamp @fabulator_edition

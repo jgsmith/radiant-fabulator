@@ -1,0 +1,19 @@
+%h1 Remove Edition
+
+%p 
+  Are you sure you want to 
+  %strong.warning permanently remove
+  the following edition?
+
+%table.index#workflows
+  %tbody
+    %tr.node.level_1
+      %td.edition
+        = image('snippet', :alt => "")
+        %span.title= @fabulator_edition.name
+
+- form_for [:admin, @fabulator_library], :html => {:method => :delete, :onsubmit_status=>"Removing edition&#8230;"} do
+  %p.buttons
+    %input.button{:type=>"submit", :value=>"Delete Edition"}/
+    or
+    = link_to 'Cancel', admin_fabulator_editions_url

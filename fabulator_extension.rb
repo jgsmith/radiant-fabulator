@@ -36,13 +36,18 @@ class FabulatorExtension < Radiant::Extension
     FabulatorFilter
 
     tab 'Fabulator' do
+      add_item("Editions", "/admin/fabulator/editions")
       add_item("Libraries", "/admin/fabulator/libraries")
     end
     Radiant::AdminUI.class_eval do
       attr_accessor :libraries
       alias_method :fabulator_library, :libraries
+      attr_accessor :editions
+      alias_method :fabulator_edition, :editions
     end
     admin.libraries = load_default_fabulator_library_regions
+    admin.editions  = load_default_fabulator_edition_regions
+    admin.page.edit.add :form_top, "parse_errors"
 
     Page.class_eval {
       include FabulatorTags
@@ -106,6 +111,23 @@ class FabulatorExtension < Radiant::Extension
         edit.form_bottom.concat %w{edit_buttons edit_timestamp}
       end
       library.index = Radiant::AdminUI::RegionSet.new do |index|
+        index.top.concat %w{help_text}
+        index.thead.concat %w{title_header modify_header}
+        index.tbody.concat %w{title_cell modify_cell}
+        index.bottom.concat %w{new_button}
+      end
+      library.new = library.edit
+    end
+  end
+  
+  def load_default_fabulator_edition_regions
+    returning OpenStruct.new do |edition|
+      edition.edit = Radiant::AdminUI::RegionSet.new do |edit|
+        edit.main.concat %w{edit_header edit_form}
+        edit.form.concat %w{edit_title edit_content}
+        edit.form_bottom.concat %w{edit_buttons edit_timestamp}
+      end
+      edition.index = Radiant::AdminUI::RegionSet.new do |index|
         index.top.concat %w{help_text}
         index.thead.concat %w{title_header modify_header}
         index.tbody.concat %w{title_cell modify_cell}
