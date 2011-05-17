@@ -1,0 +1,5 @@
+- if @page.is_a?(FabulatorPage) && !@page.compilation_errors.nil?
+  %tr
+    %td{:colspan => 3}
+      %pre
+        = @page.compilation_errors

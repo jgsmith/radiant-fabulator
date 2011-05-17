@@ -1,5 +1,5 @@
 class FabulatorPage < Page
-  attr_accessor :inner_content
+  attr_accessor :inner_content, :compilation_errors
 
   description %{
     A Fabulator page allows you to create a simple, interactive
@@ -9,6 +9,7 @@ class FabulatorPage < Page
   # need a reasonable name for the XML part
   XML_PART_NAME = 'extended'
 
+  before_save :check_compile
   after_save :set_defaults
   attr_accessor :resource_ln, :c_state_machine
 
@@ -194,7 +195,7 @@ class FabulatorPage < Page
     c = get_fabulator_context(tag)
     root = nil
 
-    missing_args = tag.locals.page.missing_args
+    page = tag.locals.page
 
     form_base = tag.attr['base']
     if form_base.nil? || form_base == ''
@@ -216,6 +217,8 @@ class FabulatorPage < Page
     return doc if doc.is_a?(String)
 
     doc.add_default_values(root)
+    doc.add_missing_values(page.statemachine.missing_params)
+    doc.add_errors(page.statemachine.errors)
 
     doc.to_html
   end
@@ -259,17 +262,16 @@ class FabulatorPage < Page
 
   desc %{
     Selects the value and returns it in HTML.
-    TODO: allow escaping of HTML special characters
 
     *Usage:*
 
-    <pre><code><r:value select="./foo" /></code></pre>
+    <pre><code><r:value-of select="./foo" [raw="false"] /></code></pre>
   }
-  tag 'value' do |tag|
+  tag 'value-of' do |tag|
     selection = tag.attr['select']
     c = get_fabulator_context(tag)
     items = c.nil? ? [] : c.eval_expression(selection)
-    if tag.attr['raw']
+    if tag.attr['raw'] && ['true', 'yes'].include?(tag.attr['raw'])
       items.collect{|i| c.with_root(i).to([Fabulator::FAB_NS, 'string']).root.value }.join('')
     else
       items.collect{|i| c.with_root(i).to([Fabulator::FAB_NS, 'html']).root.value }.join('')
@@ -377,6 +379,19 @@ private
     @compiled_xml = nil
     sm = self.state_machine
     return if sm.nil?
+  end
+  
+  def check_compile
+    self[:compiled_xml] = nil
+    @compiled_xml = nil
+    @compilation_errors = nil
+    begin
+      self.state_machine
+    rescue => e
+      # note errors somewhere that can be made visible and raise an exception
+      @compilation_errors = e
+      raise "Unable to compile application."
+    end
   end
 
 end
