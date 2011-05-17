@@ -133,7 +133,7 @@ class FabulatorExtension < Radiant::Extension
         index.tbody.concat %w{title_cell modify_cell}
         index.bottom.concat %w{new_button}
       end
-      library.new = library.edit
+      edition.new = edition.edit
     end
   end
 
