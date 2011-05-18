@@ -8,7 +8,6 @@ class FabulatorLibrary < ActiveRecord::Base
   serialize :compiled_xml
 
   before_save :compile_xml
-  after_load  :check_compile
   
   attr_accessor :compilation_errors
 
@@ -23,11 +22,11 @@ class FabulatorLibrary < ActiveRecord::Base
     self.compiled_xml = lib
   end
   
-  def check_compile
+  def has_compile_errors?
     @compiled_xml = nil
     @compilation_errors = nil
     
-    return if self.xml.blank?
+    return false if self.xml.blank?
     
     doc = nil
     begin
@@ -36,14 +35,15 @@ class FabulatorLibrary < ActiveRecord::Base
     rescue => e
       @compilation_errors = e.message + " near line #{e.line} column #{e.column}"
     end
-    return if doc.nil?
+    return true if @compilation_errors
     begin
       self.compile_xml!
     rescue => e
       # note errors somewhere that can be made visible and raise an exception
       @compilation_errors = e
-      raise "Unable to compile application."
     end
+    return true if @compilation_errors
+    return false
   end
   
 protected
