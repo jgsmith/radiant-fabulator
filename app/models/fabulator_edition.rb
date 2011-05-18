@@ -15,6 +15,10 @@ class FabulatorEdition < ActiveRecord::Base
     RADIANT_ROOT + '/fabulator/editions'
   end
   
+  def file_size
+    File.size?(self.filepath + "/" + filename) || 0
+  end
+  
   def create_archive
     # we want to go through each fabulator-related radiant extension and call their
     # archive method if it exists

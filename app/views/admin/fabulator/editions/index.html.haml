@@ -7,7 +7,9 @@
       %tr
         - render_region :thead do |thead|
           - thead.title_header do
-            %th.filter Library
+            %th.filter Edition
+          - thead.size_header do
+            %th.size Size
           - thead.modify_header do
             %th.modify Modify
     %tbody
@@ -18,7 +20,10 @@
               - tbody.title_cell do
                 %td.snippet
                   = image('snippet', :alt => '')
-                  %span= link_to edition.name, edit_admin_fabulator_edition_url(library)
+                  %span= link_to edition.name, edit_admin_fabulator_edition_url(edition)
+	              - tbody.size_cell do
+	                %td.size
+	                  %span= edition.file_size
               - tbody.modify_cell do
                 %td.remove
                   = link_to image('remove', :alt => 'Remove Edition'), remove_admin_fabulator_edition_url(edition)

@@ -129,8 +129,8 @@ class FabulatorExtension < Radiant::Extension
       end
       edition.index = Radiant::AdminUI::RegionSet.new do |index|
         index.top.concat %w{help_text}
-        index.thead.concat %w{title_header modify_header}
-        index.tbody.concat %w{title_cell modify_cell}
+        index.thead.concat %w{title_header size_header modify_header}
+        index.tbody.concat %w{title_cell size_cell modify_cell}
         index.bottom.concat %w{new_button}
       end
       edition.new = edition.edit
