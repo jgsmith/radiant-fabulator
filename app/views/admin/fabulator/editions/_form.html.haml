@@ -9,8 +9,8 @@
           = f.text_field :name, :class => 'textbox activate', :maxlength => 100
       - form.edit_content do
         %p.content
-          = f.label :xml, "Description"
-          ~ f.text_area :xml, :class => "textarea large", :style => "width: 100%"
+          = f.label :description, "Description"
+          ~ f.text_area :description, :class => "textarea large", :style => "width: 100%"
   - render_region :form_bottom do |form_bottom|
     - form_bottom.edit_buttons do
       %p.buttons{:style=>"clear: left"}
