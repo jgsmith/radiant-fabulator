@@ -21,9 +21,9 @@
                 %td.snippet
                   = image('snippet', :alt => '')
                   %span= link_to edition.name, edit_admin_fabulator_edition_url(edition)
-	              - tbody.size_cell do
-	                %td.size
-	                  %span= edition.file_size
+              - tbody.size_cell do
+	              %td.size
+	                %span= edition.file_size
               - tbody.modify_cell do
                 %td.remove
                   = link_to image('remove', :alt => 'Remove Edition'), remove_admin_fabulator_edition_url(edition)
