@@ -9,7 +9,6 @@ class FabulatorPage < Page
   # need a reasonable name for the XML part
   XML_PART_NAME = 'extended'
 
-  #after_find :check_compile
   attr_accessor :resource_ln, :c_state_machine
 
   # create tags to access filtered data in page display
@@ -239,8 +238,8 @@ class FabulatorPage < Page
     return doc if doc.is_a?(String)
 
     doc.add_default_values(root)
-    doc.add_missing_values(page.statemachine.missing_params)
-    doc.add_errors(page.statemachine.errors)
+    doc.add_missing_values(page.state_machine.missing_params)
+    doc.add_errors(page.state_machine.errors)
 
     doc.to_html
   end
