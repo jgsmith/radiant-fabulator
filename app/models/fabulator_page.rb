@@ -9,8 +9,7 @@ class FabulatorPage < Page
   # need a reasonable name for the XML part
   XML_PART_NAME = 'extended'
 
-  before_save :check_compile
-  after_save :set_defaults
+  after_find :check_compile
   attr_accessor :resource_ln, :c_state_machine
 
   # create tags to access filtered data in page display
@@ -21,6 +20,33 @@ class FabulatorPage < Page
     false
   end
 
+  def check_compile
+    self[:compiled_xml] = nil
+    @compiled_xml = nil
+    @compilation_errors = nil
+    
+    content = self.part(XML_PART_NAME)
+    return if content.nil?
+    content = content.content
+    return if content.blank?
+    
+    doc = nil
+    begin
+      doc = Nokogiri::XML::Document.parse(self.part(XML_PART_NAME).content, nil, nil,
+      Nokogiri::XML::ParseOptions::STRICT|Nokogiri::XML::ParseOptions::PEDANTIC|Nokogiri::XML::ParseOptions::NONET)
+    rescue => e
+      @compilation_errors = e.message + " near line #{e.line} column #{e.column}"
+    end
+    return if doc.nil?
+    begin
+      self.state_machine
+    rescue => e
+      # note errors somewhere that can be made visible and raise an exception
+      @compilation_errors = e
+      raise "Unable to compile application."
+    end
+  end
+  
   def find_by_url(url, live = true, clean = false)
     p = super
     return p if !p.nil? && !p.is_a?(FileNotFoundPage)
@@ -45,20 +71,15 @@ class FabulatorPage < Page
   def state_machine
     return @state_machine unless @state_machine.nil?
 
-    begin
-      FabulatorLibrary.all.each do |library|
-        if library.compiled_xml.is_a?(Fabulator::Lib::Lib)
-          library.compiled_xml.register_library
-        end
+    FabulatorLibrary.all.each do |library|
+      if library.compiled_xml.is_a?(Fabulator::Lib::Lib)
+        library.compiled_xml.register_library
       end
-
-      compiler = Fabulator::Compiler.new
-      part = self.part(XML_PART_NAME)
-      @state_machine = compiler.compile(part.content)
-    rescue => e
-      Rails.logger.info("Compiling the XML application resulted in the following error: #{e}")
-      self.errors.add(:content, "Compiling the XML application resulted in the following error: #{e}")
     end
+
+    compiler = Fabulator::Compiler.new
+    part = self.part(XML_PART_NAME)
+    @state_machine = compiler.compile(part.content)
 
     return @state_machine
 
@@ -366,32 +387,4 @@ private
     end
     return c
   end
-
-
-  def set_defaults
-    # create a part for each state in the document
-    # 'body' is a description/special
-    # 'sidebar' is reserved
-
-    # compile statemachine into a set of Ruby objects and save
-    # not the most efficient, but we don't usually have hundreds of states
-    self[:compiled_xml] = nil
-    @compiled_xml = nil
-    sm = self.state_machine
-    return if sm.nil?
-  end
-  
-  def check_compile
-    self[:compiled_xml] = nil
-    @compiled_xml = nil
-    @compilation_errors = nil
-    begin
-      self.state_machine
-    rescue => e
-      # note errors somewhere that can be made visible and raise an exception
-      @compilation_errors = e
-      raise "Unable to compile application."
-    end
-  end
-
 end
