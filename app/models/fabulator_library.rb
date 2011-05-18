@@ -46,7 +46,7 @@ class FabulatorLibrary < ActiveRecord::Base
     end
   end
   
-protected:
+protected
 
   def compile_xml!
     lib = Fabulator::Lib::Lib.new
