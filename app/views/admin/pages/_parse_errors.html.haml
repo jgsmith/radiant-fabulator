@@ -1,3 +1,3 @@
-- if @page.is_a?(FabulatorPage) && !@page.compilation_errors.nil?
+- if @page.is_a?(FabulatorPage) && !@page.has_compile_errors?
   %p{:class => "error"}
     = @page.compilation_errors

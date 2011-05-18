@@ -9,7 +9,7 @@ class FabulatorPage < Page
   # need a reasonable name for the XML part
   XML_PART_NAME = 'extended'
 
-  after_find :check_compile
+  #after_find :check_compile
   attr_accessor :resource_ln, :c_state_machine
 
   # create tags to access filtered data in page display
@@ -20,15 +20,15 @@ class FabulatorPage < Page
     false
   end
 
-  def check_compile
+  def has_compile_errors?
     self[:compiled_xml] = nil
     @compiled_xml = nil
     @compilation_errors = nil
     
     content = self.part(XML_PART_NAME)
-    return if content.nil?
+    return false if content.nil?
     content = content.content
-    return if content.blank?
+    return false if content.blank?
     
     doc = nil
     begin
@@ -37,14 +37,15 @@ class FabulatorPage < Page
     rescue => e
       @compilation_errors = e.message + " near line #{e.line} column #{e.column}"
     end
-    return if doc.nil?
+    return true if @compilation_errors
     begin
       self.state_machine
     rescue => e
       # note errors somewhere that can be made visible and raise an exception
       @compilation_errors = e
-      raise "Unable to compile application."
     end
+    return true if @compilation_errors
+    return false
   end
   
   def find_by_url(url, live = true, clean = false)
