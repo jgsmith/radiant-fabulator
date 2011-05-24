@@ -1,6 +1,7 @@
 $: << File.expand_path(File.dirname(__FILE__))+'/lib'
 
 require 'fabulator_tags'
+require 'fabulator_extension/archive'
 
 require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"
 
@@ -48,7 +49,7 @@ class FabulatorExtension < Radiant::Extension
     admin.libraries = load_default_fabulator_library_regions
     admin.editions  = load_default_fabulator_edition_regions
     admin.page.edit.add :form_top, "parse_errors"
-
+    
     Page.class_eval {
       include FabulatorTags
     }
