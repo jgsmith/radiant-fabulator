@@ -19,7 +19,7 @@ class FabulatorEdition < ActiveRecord::Base
   end
   
   def filepath
-    RADIANT_ROOT + '/fabulator/editions'
+    RAILS_ROOT + '/fabulator/editions'
   end
   
   def file_size
@@ -29,6 +29,7 @@ class FabulatorEdition < ActiveRecord::Base
   ## we hand off to the Fabulator::Radiant::Archive* classes to handle the details
   ## see the Fabulator::Radiant::Archive file for details
   def create_archive
+    Dir.mkdir(self.filepath + "/" + self.build_dirname)
     archive = Fabulator::Radiant::Archive::ArchiveWriter.new(self.filepath + "/" + self.build_dirname)
     archive.create_archive
   end
