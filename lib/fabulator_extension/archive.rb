@@ -1,3 +1,5 @@
+require 'fabulator/radiant/archive'
+
 class FabulatorExtension
   class Archive < Fabulator::Radiant::Archive
     namespace Fabulator::FAB_NS

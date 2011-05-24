@@ -76,17 +76,17 @@ module Fabulator
             Fabulator::Radiant::Archive.versions[self.name]
           )
           if block
-            Fabulator::TagLib.readers[self.name].instance_eval &block
+            Fabulator::Radiant::Archive.readers[self.name].instance_eval &block
           end
         end
             
         def writing(&block)
-          Fabulator::TagLib.writers[self.name] ||= Writer.new(
-            Fabulator::TagLib.object_namespaces[self.name], 
-            Fabulator::TagLib.versions[self.name]
+          Fabulator::Radiant::Archive.writers[self.name] ||= Writer.new(
+            Fabulator::Radiant::Archive.object_namespaces[self.name], 
+            Fabulator::Radiant::Archive.versions[self.name]
           )
           if block
-            Fabulator::TagLib.writers[self.name].instance_eval &block
+            Fabulator::Radiant::Archive.writers[self.name].instance_eval &block
           end
         end
       end
