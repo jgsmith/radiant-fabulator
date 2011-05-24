@@ -259,7 +259,7 @@ module Fabulator
         
         def <<(obj)
           # we don't write out empty objects
-          return if obj.is_a?(Hash) && obj.is_empty?
+          return if obj.is_a?(Hash) && obj.empty?
           
           if !@is_first
             @io << ",\n"
