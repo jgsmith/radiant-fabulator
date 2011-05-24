@@ -11,7 +11,7 @@ class FabulatorExtension
       # we return data structures to be encoded with JSON
       
       ### Radiant core data
-      data :config, Config
+      data :config, Radiant::Config
       
       ### Users
       data :users, User
