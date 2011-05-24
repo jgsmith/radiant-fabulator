@@ -231,7 +231,7 @@ module Fabulator
               :version => writer.version
             }
             @current_dir = @base_dir + "/extensions/#{ns_count}"
-            Dir.mkdir(@current_dir)
+            Dir.mkdir(@current_dir) unless File.directory?(@current_dir)
             writer.add_to_archive(self)
           end
           
@@ -247,7 +247,7 @@ module Fabulator
         
         def add_data(nom, &block)
           data_file = @current_dir + "/data/#{nom}"
-          Dir.mkdir(@current_dir + "/data")
+          Dir.mkdir(@current_dir + "/data") unless File.directory?(@current_dir + "/data")
           @is_first = true
           File.open(data_file, "w") { |io|
             @io = io
