@@ -206,8 +206,8 @@ module Fabulator
           Dir.mkdir(@base_dir + "/extensions")
           # we want to write out in order of dependencies
           # assume FAB_NS is a dependecy for everything else
-          unused_writers = Fabulator::Radiant::Archive.writers
-          available_namespaces = unused_writers.collect{|w| w.namespace}
+          unused_writers = Fabulator::Radiant::Archive.writers.values
+          available_namespaces = unused_writers.collect{|w| w.ns}
           writers = unused_writers.select{ |w| w.ns == Fabulator::FAB_NS }
           unused_writers -= writers
           moved_writer = true
@@ -215,7 +215,7 @@ module Fabulator
             moved_writer = false
             used_namespaces = writers.collect{ |w| w.namespace }
             new_writers = unused_writers.select{ |w| 
-              ((w.archiver.depends_on & available_namespaces) - used_namespaces - [w.namespace]).empty? 
+              ((w.archiver.depends_on & available_namespaces) - used_namespaces - [w.ns]).empty? 
             }
             moved_writer = !new_writers.empty?
             unused_writers -= new_writers
