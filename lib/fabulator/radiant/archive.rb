@@ -180,7 +180,7 @@ module Fabulator
         def initialize(ns, version)
           @ns = ns
           @version = version
-          @data = proc { }
+          @data = { }
         end
         
         # passes in a name and an object that feeds one item each time

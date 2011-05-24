@@ -1,7 +1,6 @@
 $: << File.expand_path(File.dirname(__FILE__))+'/lib'
 
 require 'fabulator_tags'
-require 'fabulator_extension/archive'
 
 require_dependency "#{File.expand_path(File.dirname(__FILE__))}/app/models/fabulator_page"
 
@@ -19,6 +18,7 @@ class FabulatorExtension < Radiant::Extension
       require 'fabulator/lib'
       require 'fabulator/template'
       require 'fabulator/radiant'
+      require 'fabulator_extension/archive'
     end
   end
 
