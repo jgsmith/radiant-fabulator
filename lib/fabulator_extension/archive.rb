@@ -88,6 +88,7 @@ class FabulatorExtension
       
       ### Fabulator extensions
       data :libraries, FabulatorLibrary
+    end
     
     reading do
       ### Radiant core data
