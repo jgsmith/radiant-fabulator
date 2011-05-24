@@ -29,12 +29,12 @@ class FabulatorEdition < ActiveRecord::Base
   ## we hand off to the Fabulator::Radiant::Archive* classes to handle the details
   ## see the Fabulator::Radiant::Archive file for details
   def create_archive
-    archive = Fabulator::Radiant::ArchiveWriter.new(self.filepath + "/" + self.build_dirname)
+    archive = Fabulator::Radiant::Archive::ArchiveWriter.new(self.filepath + "/" + self.build_dirname)
     archive.create_archive
   end
   
   def restore_archive
-    archive = Fabulator::Radiant::ArchiveReader.new(self.filepath + "/" + self.filename)
+    archive = Fabulator::Radiant::Archive::ArchiveReader.new(self.filepath + "/" + self.filename)
     archive.restore_archive
   end
 end
