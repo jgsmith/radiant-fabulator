@@ -272,24 +272,19 @@ module Fabulator
           return if dir_prefix =~ /\/\.\.\// || dir_prefix =~ /^\.\.\// || dir_prefix =~ /\/\.\.$/
           dirs = dirs.select{ |d| !(d =~ /\/\.\.\// || d =~ /^\.\.\// || d =~ /\/\.\.$/) }
           
-          source = ''
-          case type.to_sym
-          when :system
-            source = dir_prefix
-          when :public
-            source = 'public/' + dir_prefix
-          else
-            return
-          end
+          source = RAILS_ROOT + dir_prefix
           
-          source = RAILS_ROOT + '/../' + source
+          return unless [:system, :public].include?(type.to_sym)
+          
           source.gsub!(/\/+/, '/')
           
           dest = @current_dir + "/folders/" + type.to_s + "/"
+          dest.gsub!(/\/+/, '/')
+          
           dirs.each do |dir|
             if File.directory?(source + '/' + dir)
               FileUtils.mkdir_p(dest + '/' + dir)
-              FileUtils.cp_r(source + '/' + dir + '/.', dest + '/' + dir)
+              FileUtils.cp_r(source + dir + '/.', dest + dir)
             end
           end
         end
