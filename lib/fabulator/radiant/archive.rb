@@ -2,6 +2,9 @@
 # The extension should register the archive object like so:
 #   FabulatorExtension.archives << MyArchiveClass.new(...)
 
+require 'zlib'
+require 'archive/tar/minitar'
+
 module Fabulator
   module Radiant
     class Archive
@@ -196,11 +199,25 @@ module Fabulator
       end
       
       class ArchiveWriter
+        include Archive::Tar
+        
         VERSION = "0.1"
         
         def initialize(edition)
           @base_dir = edition.filepath + "/" + edition.build_dirname
           @edition = edition
+        end
+        
+        def base_dir
+          @edition.filepath + "/" + @edition.build_dirname
+        end
+        
+        def build_dirname
+          @edition.build_dirname
+        end
+        
+        def containing_dir
+          @edition.filepath
         end
         
         def create_archive
@@ -260,8 +277,10 @@ module Fabulator
           # we want this to open up as ./edition-#{d}/
           # and be named edition-#{d}.tgz
           
-          tarfile = @base_dir + ".tgz"
-          
+          Dir.chdir(self.containing_dir) do |path|
+            tgz = Zlib::GzipWriter.new(File.open(self.build_dirname + ".tgz", "wb"))
+            Minitar.pack(self.build_dirname, tgz)
+          end        
         end
         
         def add_folders(type, dir_prefix, dirs)
