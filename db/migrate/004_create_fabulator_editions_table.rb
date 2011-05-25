@@ -2,6 +2,7 @@ class CreateFabulatorEditionsTable < ActiveRecord::Migration
   def self.up
     create_table :fabulator_editions do |t|
       t.string :name, :null => false
+      t.string :download_filename, :null => false
       t.string :description
       t.integer :lock_version, :default => 0
       t.references :updated_by

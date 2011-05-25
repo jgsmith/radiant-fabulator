@@ -16,7 +16,8 @@ class Api::EditionsController < ApplicationController
       }
       format.html {
         send_file(
-          @edition.filepath + '/' + @edition.filename
+          @edition.filepath + '/' + @edition.filename,
+          :filename => @edition.download_filename + ".tgz"
         )
       }
     end
