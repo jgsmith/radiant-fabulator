@@ -23,7 +23,7 @@ class FabulatorExtension
         # write out pages/page parts for non-Fabulator pages
         Page.find(:all, :conditions => ["class_name != ?", 'FabulatorPage']).each do |p|
           attrs = p.attributes
-          attrs[:parts] = p.page_parts.inject({}) { |parts, pp| 
+          attrs[:parts] = p.parts.inject({}) { |parts, pp| 
             ppattrs = pp.attributes
             ppattrs[:filter] = ppattrs[:filter_id]
             ppattrs.delete(:filter_id)
@@ -37,7 +37,7 @@ class FabulatorExtension
       data :applications do |io|
         Page.find(:all, :conditions => ["class_name = ?", 'FabulatorPage']).each do |p|
           attrs = p.attributes
-          attrs[:parts] = p.page_parts.inject({}) { |parts, pp| 
+          attrs[:parts] = p.parts.inject({}) { |parts, pp| 
             ppattrs = pp.attributes
             ppattrs[:filter] = ppattrs[:filter_id]
             ppattrs.delete(:filter_id)
