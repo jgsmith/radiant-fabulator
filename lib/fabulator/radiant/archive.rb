@@ -28,6 +28,10 @@ module Fabulator
         @@object_namespaces
       end
       
+      def self.namespace_deps
+        @@namespace_deps
+      end
+      
       def self.versions
         @@versions
       end
