@@ -147,7 +147,7 @@ module Fabulator
           # then data
           @data_keys.each do |d_key|
             if @data[d_key][:model].nil?
-              @archive.add_data(d_key, &@data[d_key][:block])
+              archive.add_data(d_key, &@data[d_key][:block])
             else
               archive.add_data(d_key) do |io|
                 @data[d_key][:model].find(:all).each do |m|
