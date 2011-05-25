@@ -265,6 +265,31 @@ module Fabulator
         end
         
         def add_folders(type, dir_prefix, dirs)
+          # we want to copy all of the files (recursively) from type:dirs
+          # the dir_prefix is prepended to dirs when reading, but not when writing into the archive
+          # we don't want .. as a directory in the dir_prefix or in a dir
+          
+          return if dir_prefix =~ /\/\.\.\// || dir_prefix =~ /^\.\.\// || dir_prefix =~ /\/\.\.$/
+          dirs = dirs.select{ |d| !(d =~ /\/\.\.\// || d =~ /^\.\.\// || d =~ /\/\.\.$/) }
+          
+          source = ''
+          case type.to_sym
+          when :system
+            source = dir_prefix
+          when :public
+            source = 'public/' + dir_prefix
+          else
+            return
+          end
+          
+          source = RAILS_ROOT + '/' + source
+          source.gsub!(/\/+/, '/')
+          
+          dest = @current_dir + "/folders/" + type.to_s + "/"
+          dirs.each do |dir|
+            FileUtils.mkdir_p(dest + '/' + dir)
+            FileUtils.cp_r(source + '/' + dir + '/.', dest + '/' + dir)
+          end
         end
         
         def add_data(nom, &block)
