@@ -231,7 +231,7 @@ module Fabulator
           moved_writer = true
           while(!unused_writers.empty? && moved_writer)
             moved_writer = false
-            used_namespaces = writers.collect{ |w| w.namespace }
+            used_namespaces = writers.collect{ |w| w.ns }
             new_writers = unused_writers.select{ |w| 
               ((w.archiver.depends_on & available_namespaces) - used_namespaces - [w.ns]).empty? 
             }
