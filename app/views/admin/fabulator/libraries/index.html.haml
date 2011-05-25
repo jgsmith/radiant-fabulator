@@ -21,7 +21,7 @@
                   %span= link_to library.name, edit_admin_fabulator_library_url(library)
               - tbody.modify_cell do
                 %td.remove
-                  = link_to image('remove', :alt => 'Remove Library'), remove_admin_fabulator_library_url(library)
+                  = link_to t('remove'), remove_admin_fabulator_library_url(library)
       - else
         %tr
           %td.note{:colspan => admin.fabulator_library.index.tbody.length} No Libraries

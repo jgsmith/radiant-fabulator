@@ -26,7 +26,7 @@
                   %span= edition.file_size
               - tbody.modify_cell do
                 %td.remove
-                  = link_to image('remove', :alt => 'Remove Edition'), remove_admin_fabulator_edition_url(edition)
+                  = link_to t('remove'), remove_admin_fabulator_edition_url(edition)
       - else
         %tr
           %td.note{:colspan => admin.fabulator_edition.index.tbody.length} No Editions
