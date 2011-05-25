@@ -199,7 +199,6 @@ module Fabulator
       end
       
       class ArchiveWriter
-        include Archive::Tar
         
         VERSION = "0.1"
         
@@ -279,7 +278,7 @@ module Fabulator
           
           Dir.chdir(self.containing_dir) do |path|
             tgz = Zlib::GzipWriter.new(File.open(self.build_dirname + ".tgz", "wb"))
-            Minitar.pack(self.build_dirname, tgz)
+            Archive::Tar::Minitar.pack(self.build_dirname, tgz)
           end        
         end
         
