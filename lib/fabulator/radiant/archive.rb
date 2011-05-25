@@ -196,8 +196,11 @@ module Fabulator
       end
       
       class ArchiveWriter
-        def initialize(base_dir)
-          @base_dir = base_dir
+        VERSION = "0.1"
+        
+        def initialize(edition)
+          @base_dir = edition.filepath + "/" + edition.build_dirname
+          @edition = edition
         end
         
         def create_archive
@@ -247,9 +250,9 @@ module Fabulator
           
           data_file = @base_dir + "/README"
           File.open(data_file, "w") { |io|
-            io << self.name
+            io << @edition.name
             io << "\n\n"
-            io << self.description
+            io << @edition.description
             io << "\n"
           }
           # now that the directory tree is built and all the content is there, create the tarball

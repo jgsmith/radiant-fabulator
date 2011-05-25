@@ -30,7 +30,7 @@ class FabulatorEdition < ActiveRecord::Base
   ## see the Fabulator::Radiant::Archive file for details
   def create_archive
     Dir.mkdir(self.filepath + "/" + self.build_dirname)
-    archive = Fabulator::Radiant::Archive::ArchiveWriter.new(self.filepath + "/" + self.build_dirname)
+    archive = Fabulator::Radiant::Archive::ArchiveWriter.new(self)
     archive.create_archive
   end
   
