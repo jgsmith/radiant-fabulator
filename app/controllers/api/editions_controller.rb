@@ -1,7 +1,11 @@
 class Api::EditionsController < ApplicationController
-
+  only_allow_access_to :show,
+    :when => [:admin],
+    :denied_url => { :controller => 'admin/pages', :action => 'index' },
+    :denied_message => 'You must have admin privileges to perform this action.'
+    
   def show
-    @edition = FabulatorEdition.find(:first, :conditions => [ "name = ?", params[:id] ])
+    @edition = FabulatorEdition.find(params[:id])
     respond_to do |format|
       format.json { 
         render :json => { 
