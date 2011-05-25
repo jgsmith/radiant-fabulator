@@ -13,7 +13,7 @@ module Admin
       def show
         respond_to do |format|
           format.xml { super }
-          format.html # { redirect_to edit_admin_fabulator_editions_path(params[:id]) }   
+          format.html { @fabulator_edition = FabulatorEdition.find(params[:id]) }# { redirect_to edit_admin_fabulator_editions_path(params[:id]) }   
         end
       end
     end

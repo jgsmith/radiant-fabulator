@@ -4,8 +4,13 @@
 
 - render_region :main do |main|
   - main.show_header do
-    %h1 Edition Description
+    %h1 = 'Edition - ' + @fabulator_edition.name
   - main.show_form do
     %p
       Size:
       = @fabulator_edition.file_size
+
+    %p
+      Download:
+      %a{:href => api_edition_url(:id => @fabulator_edition.id)}
+        = @fabulator_edition.filename
