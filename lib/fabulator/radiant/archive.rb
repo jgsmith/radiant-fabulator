@@ -160,9 +160,9 @@ module Fabulator
                     old_keys = [ ]
                     save_keys = [ ]
                     @data[d_key][:attrs].each_pair do |to,from|
-                      attrs[to] = attrs[from]
-                      old_keys << from
-                      save_keys << to
+                      attrs[to.to_s] = attrs[from.to_s]
+                      old_keys << from.to_s
+                      save_keys << to.to_s
                     end
                     (old_keys - save_keys).each { |k| attrs.delete(k) }
                   end

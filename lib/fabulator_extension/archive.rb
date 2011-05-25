@@ -23,11 +23,11 @@ class FabulatorExtension
         # write out pages/page parts for non-Fabulator pages
         Page.find(:all, :conditions => ["class_name != ?", 'FabulatorPage']).each do |p|
           attrs = p.attributes
-          attrs[:parts] = p.parts.inject({}) { |parts, pp| 
+          attrs["parts"] = p.parts.inject({}) { |parts, pp| 
             ppattrs = pp.attributes
-            ppattrs[:filter] = ppattrs[:filter_id]
-            ppattrs.delete(:filter_id)
-            parts[ppattrs[:name].to_sym] = ppattrs
+            ppattrs["filter"] = ppattrs["filter_id"]
+            ppattrs.delete("filter_id")
+            parts[ppattrs["name"]] = ppattrs
             parts
           }
           io << attrs
@@ -37,17 +37,17 @@ class FabulatorExtension
       data :applications do |io|
         Page.find(:all, :conditions => ["class_name = ?", 'FabulatorPage']).each do |p|
           attrs = p.attributes
-          attrs[:parts] = p.parts.inject({}) { |parts, pp| 
+          attrs["parts"] = p.parts.inject({}) { |parts, pp| 
             ppattrs = pp.attributes
-            ppattrs[:filter] = ppattrs[:filter_id]
-            ppattrs.delete(:filter_id)
-            parts[ppattrs[:name].to_sym] = ppattrs
+            ppattrs["filter"] = ppattrs["filter_id"]
+            ppattrs.delete("filter_id")
+            parts[ppattrs["name"]] = ppattrs
             parts
           }
-          extended = attrs[:parts][:extended]
+          extended = attrs["parts"]["extended"]
           if !extended.nil?
-            attrs[:parts].delete(:extended)
-            attrs[:xml] = extended[:content]
+            attrs["parts"].delete("extended")
+            attrs["xml"] = extended["content"]
           end
           io << attrs
         end
