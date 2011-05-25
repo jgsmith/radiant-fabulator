@@ -20,7 +20,7 @@
               - tbody.title_cell do
                 %td.snippet
                   = image('snippet', :alt => '')
-                  %span= link_to edition.name, edit_admin_fabulator_edition_url(edition)
+                  %span= link_to edition.name, admin_fabulator_edition_url(edition)
               - tbody.size_cell do
                 %td.size
                   %span= edition.file_size

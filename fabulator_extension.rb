@@ -128,6 +128,11 @@ class FabulatorExtension < Radiant::Extension
         edit.form.concat %w{edit_title edit_content}
         edit.form_bottom.concat %w{edit_buttons edit_timestamp}
       end
+       edition.show = Radiant::AdminUI::RegionSet.new do |show|
+          show.main.concat %w{show_header show_form}
+          show.form.concat %w{show_title show_content}
+          show.form_bottom.concat %w{show_buttons show_timestamp}
+        end
       edition.index = Radiant::AdminUI::RegionSet.new do |index|
         index.top.concat %w{help_text}
         index.thead.concat %w{title_header size_header modify_header}

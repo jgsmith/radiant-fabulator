@@ -94,54 +94,19 @@ class FabulatorExtension
         # :minify (boolean)
       end
       
-      ### Fabulator extensions
       data :libraries, FabulatorLibrary
     end
     
     reading do
-      ### Radiant core data
-      data :config do
-        # :key
-        # :value
-        # :description
-      end
       
-      data :extensions do
-        # :name
-        # :schema_version
-        # :enabled
-      end
+      ### Radiant core data
+      data :config, Radiant::Config
       
       ### Users
-      data :users do
-        # :id
-        # :name
-        # :email
-        # :login
-        # :password
-        # :created_at
-        # :updated_at
-        # :created_by_id
-        # :updated_by_id
-        # :admin
-        # :designer
-        # :notes
-        # :salt
-        # :session_token
-        # :locale
-      end
+      data :users, User
       
       ### Content
-      data :layouts do
-        # :id
-        # :name
-        # :content
-        # :created_at
-        # :updated_at
-        # :created_by_id
-        # :updated_by_id
-        # :content_type
-      end
+      data :layouts, Layout
       
       data :pages do
         # write out pages/page parts for non-Fabulator pages
@@ -191,35 +156,13 @@ class FabulatorExtension
         # }]
       end
 
-      data :snippets do
-        # :name
-        # :filter
-        # :content
-        # :created_at
-        # :updated_at
-        # :created_by_id
-        # :updated_by_id
-      end
+      data :snippets, Snippet, {
+        :filter_id => :filter
+      }
       
-      data :assets do
-        # write out assets data
-        # :id
-        # :caption
-        # :title
-        # :asset_file_name
-        # :asset_content_type
-        # :asset_file_size
-        # :created_by_id
-        # :updated_by_id
-        # :created_at
-        # :updated_at
-      end
+      data :assets, Asset
       
-      data :page_attachments do
-        # :asset_id
-        # :page_id
-        # :position
-      end
+      data :page_attachments, PageAttachment
       
       data :js do
         # write out javascripts
@@ -247,21 +190,7 @@ class FabulatorExtension
         # :minify (boolean)
       end
       
-      ### Fabulator extensions
-      data :libraries do |io|
-        # write out libraries
-        FabulatorLibrary.find.each do |lib|
-          io << {
-            :id => lib.id,
-            :name => lib.name,
-            :xml => lib.xml,
-            :updated_by => lib.updated_by.id,
-            :created_by => lib.created_by.id,
-            :created_at => lib.created_at,
-            :updated_at => lib.updated_at
-          }
-        end
-      end
+      data :libraries, FabulatorLibrary
     end
   end
 end

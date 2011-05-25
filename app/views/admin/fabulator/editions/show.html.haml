@@ -1,0 +1,11 @@
+- @page_title = @fabulator_edition.name + ' Edition - ' + default_page_title
+
+- body_classes << "reversed"
+
+- render_region :main do |main|
+  - main.show_header do
+    %h1 Edition Description
+  - main.show_form do
+    %p
+      Size:
+      = @fabulator_edition.file_size

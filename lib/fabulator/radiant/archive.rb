@@ -185,11 +185,17 @@ module Fabulator
           @ns = ns
           @version = version
           @data = { }
+          @data_keys = [ ]
         end
         
         # passes in a name and an object that feeds one item each time
-        def data(nom = :default, &block)
-          @data[nom.to_sym] = block
+        def data(nom = :default, model_class = nil, attr_mapping = { }, &block)
+          @data[nom.to_sym] = {
+            :block => block,
+            :model => model_class,
+            :attrs => attr_mapping
+          }
+          @data_keys << nom.to_sym
         end
         
         def take_from_archive(archive)
@@ -340,8 +346,9 @@ module Fabulator
       end
       
       class ArchiveReader
-        def initialize(base_dir)
-          @base_dir = base_dir
+        def initialize(edition)
+          @base_dir = edition.base_dir
+          @edition = edition
         end
         
         # this will bring everything in the archive into the application, overwriting what is there
