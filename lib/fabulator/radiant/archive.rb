@@ -2,9 +2,6 @@
 # The extension should register the archive object like so:
 #   FabulatorExtension.archives << MyArchiveClass.new(...)
 
-require 'zlib'
-require 'archive/tar/minitar'
-
 module Fabulator
   module Radiant
     class Archive
@@ -199,7 +196,9 @@ module Fabulator
       end
       
       class ArchiveWriter
-        
+        require 'zlib'
+        require 'fileutils'
+        require 'archive/tar/minitar'
         VERSION = "0.1"
         
         def initialize(edition)
