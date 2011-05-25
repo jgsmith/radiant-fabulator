@@ -13,4 +13,4 @@
     %p
       Download:
       %a{:href => api_edition_url(:id => @fabulator_edition.id)}
-        = @fabulator_edition.filename
+        = @fabulator_edition.download_filename + ".tgz"
