@@ -282,13 +282,15 @@ module Fabulator
             return
           end
           
-          source = RAILS_ROOT + '/' + source
+          source = RAILS_ROOT + '/../' + source
           source.gsub!(/\/+/, '/')
           
           dest = @current_dir + "/folders/" + type.to_s + "/"
           dirs.each do |dir|
-            FileUtils.mkdir_p(dest + '/' + dir)
-            FileUtils.cp_r(source + '/' + dir + '/.', dest + '/' + dir)
+            if File.directory?(source + '/' + dir)
+              FileUtils.mkdir_p(dest + '/' + dir)
+              FileUtils.cp_r(source + '/' + dir + '/.', dest + '/' + dir)
+            end
           end
         end
         
