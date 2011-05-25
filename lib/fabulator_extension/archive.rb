@@ -19,7 +19,7 @@ class FabulatorExtension
       ### Content
       data :layouts, Layout
       
-      data :pages, Page do |io|
+      data :pages do |io|
         # write out pages/page parts for non-Fabulator pages
         Page.find(:all, :conditions => ["class_name != ?", 'FabulatorPage']).each do |p|
           attrs = p.attributes
