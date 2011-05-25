@@ -235,18 +235,37 @@ module Fabulator
             writer.add_to_archive(self)
           end
           
+          data_file = @base_dir + "/toc.json"
+          File.open(data_file, "w") { |io|
+            io << namespaces.to_json
+          }
           
+          data_file = @base_dir + "/VERSION"
+          File.open(data_file, "w") { |io|
+            io << VERSION
+          }
+          
+          data_file = @base_dir + "/README"
+          File.open(data_file, "w") { |io|
+            io << self.name
+            io << "\n\n"
+            io << self.description
+            io << "\n"
+          }
           # now that the directory tree is built and all the content is there, create the tarball
           # and gzip it
           # we want this to open up as ./edition-#{d}/
           # and be named edition-#{d}.tgz
+          
+          tarfile = @base_dir + ".tgz"
+          
         end
         
         def add_folders(type, dir_prefix, dirs)
         end
         
         def add_data(nom, &block)
-          data_file = @current_dir + "/data/#{nom}"
+          data_file = @current_dir + "/data/#{nom}.json"
           Dir.mkdir(@current_dir + "/data") unless File.directory?(@current_dir + "/data")
           @is_first = true
           File.open(data_file, "w") { |io|

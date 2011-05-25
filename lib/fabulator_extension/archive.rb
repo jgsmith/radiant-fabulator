@@ -27,7 +27,9 @@ class FabulatorExtension
             ppattrs = pp.attributes
             ppattrs["filter"] = ppattrs["filter_id"]
             ppattrs.delete("filter_id")
-            parts[ppattrs["name"]] = ppattrs
+            nom = ppattrs["name"]
+            ppattrs.delete("name")
+            parts[nom] = ppattrs
             parts
           }
           io << attrs
@@ -37,11 +39,15 @@ class FabulatorExtension
       data :applications do |io|
         Page.find(:all, :conditions => ["class_name = ?", 'FabulatorPage']).each do |p|
           attrs = p.attributes
+          attrs.delete("class_name")
+          attrs.delete("compiled_xml")
           attrs["parts"] = p.parts.inject({}) { |parts, pp| 
             ppattrs = pp.attributes
             ppattrs["filter"] = ppattrs["filter_id"]
             ppattrs.delete("filter_id")
-            parts[ppattrs["name"]] = ppattrs
+            nom = ppattrs["name"]
+            ppattrs.delete("name")
+            parts[nom] = ppattrs
             parts
           }
           extended = attrs["parts"]["extended"]
