@@ -10,7 +10,12 @@
       Size:
       = @fabulator_edition.file_size
 
+    %h2 Download
+
     %p
-      Download:
       %a{:href => api_edition_url(:id => @fabulator_edition.id)}
         = @fabulator_edition.download_filename + ".tgz"
+    %p
+      N.B.: This archive opens as
+      = @fabulator_edition.filename
+      when unpacked.
