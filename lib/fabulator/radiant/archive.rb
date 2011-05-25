@@ -152,7 +152,7 @@ module Fabulator
               archive.add_data(d_key) do |io|
                 @data[d_key][:model].find(:all).each do |m|
                   if @data[d_key][:block]
-                    attrs = @data[d_key][:block].yield m
+                    attrs = @data[d_key][:block].call(m)
                   else
                     attrs = m.attributes
                   end
