@@ -277,7 +277,7 @@ module Fabulator
           
           Dir.chdir(self.containing_dir) do |path|
             tgz = Zlib::GzipWriter.new(File.open(self.build_dirname + ".tgz", "wb"))
-            Archive::Tar::Minitar.pack(self.build_dirname, tgz)
+            ::Archive::Tar::Minitar.pack(self.build_dirname, tgz)
           end        
         end
         
